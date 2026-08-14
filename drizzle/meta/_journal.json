@@ -22,6 +22,13 @@
       "when": 1786701285756,
       "tag": "0002_groovy_colossus",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1786703720043,
+      "tag": "0003_moaning_texas_twister",
+      "breakpoints": true
     }
   ]
 }

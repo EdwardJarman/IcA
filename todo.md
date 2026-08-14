@@ -35,3 +35,8 @@
 - [x] Add account profile controls with provider identity, sign-out, and account storage status
 - [x] Persist each authenticated user’s Luma workroom data in the managed cloud database
 - [x] Migrate, test, and checkpoint the account and cloud persistence update
+- [x] Design safe export, deletion, normalized record, and cross-device preference-sync boundaries
+- [x] Add account data export and confirmation-gated deletion controls
+- [x] Add independently queryable user-scoped Bot, task, and file cloud records
+- [x] Synchronize alert preferences across a user’s registered devices
+- [x] Migrate, test, and checkpoint account data-management features

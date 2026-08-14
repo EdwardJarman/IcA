@@ -3,7 +3,7 @@
  * Extend this file with additional tables as your product grows.
  * Columns use camelCase to match both database fields and generated types.
  */
-import { boolean, int, json, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, index, int, json, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 import type { WorkroomCloudSnapshot } from "../shared/workroom-snapshot";
 
 export const users = mysqlTable("users", {
@@ -28,6 +28,7 @@ export type InsertUser = typeof users.$inferInsert;
 
 export const pushDevices = mysqlTable("pushDevices", {
   id: int("id").autoincrement().primaryKey(),
+  userId: int("userId"),
   installationId: varchar("installationId", { length: 96 }).notNull().unique(),
   expoPushToken: varchar("expoPushToken", { length: 255 }).notNull(),
   approvalEnabled: boolean("approvalEnabled").default(true).notNull(),
@@ -39,6 +40,15 @@ export const pushDevices = mysqlTable("pushDevices", {
 export type PushDevice = typeof pushDevices.$inferSelect;
 export type InsertPushDevice = typeof pushDevices.$inferInsert;
 
+export const userNotificationPreferences = mysqlTable("userNotificationPreferences", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  approvalEnabled: boolean("approvalEnabled").default(true).notNull(),
+  completionEnabled: boolean("completionEnabled").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export const workroomSnapshots = mysqlTable("workroomSnapshots", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().unique(),
@@ -49,3 +59,42 @@ export const workroomSnapshots = mysqlTable("workroomSnapshots", {
 
 export type WorkroomSnapshot = typeof workroomSnapshots.$inferSelect;
 export type InsertWorkroomSnapshot = typeof workroomSnapshots.$inferInsert;
+
+export const workroomBots = mysqlTable("workroomBots", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  clientId: varchar("clientId", { length: 128 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  role: varchar("role", { length: 255 }).notNull(),
+  status: varchar("status", { length: 64 }).notNull(),
+  color: varchar("color", { length: 32 }).notNull(),
+  icon: varchar("icon", { length: 96 }).notNull(),
+  payload: json("payload").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("workroomBots_user_idx").on(table.userId), uniqueIndex("workroomBots_user_client_unique").on(table.userId, table.clientId)]);
+
+export const workroomTasks = mysqlTable("workroomTasks", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  clientId: varchar("clientId", { length: 128 }).notNull(),
+  botClientId: varchar("botClientId", { length: 128 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  status: varchar("status", { length: 64 }).notNull(),
+  risk: varchar("risk", { length: 32 }).notNull(),
+  payload: json("payload").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("workroomTasks_user_idx").on(table.userId), uniqueIndex("workroomTasks_user_client_unique").on(table.userId, table.clientId)]);
+
+export const workroomFiles = mysqlTable("workroomFiles", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  clientId: varchar("clientId", { length: 128 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  owner: varchar("owner", { length: 255 }).notNull(),
+  scope: varchar("scope", { length: 96 }).notNull(),
+  payload: json("payload").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+}, (table) => [index("workroomFiles_user_idx").on(table.userId), uniqueIndex("workroomFiles_user_client_unique").on(table.userId, table.clientId)]);

@@ -29,7 +29,7 @@ export default function WorkroomScreen() {
   const [newBotColor, setNewBotColor] = useState("#7563F5");
   const [newBotIcon, setNewBotIcon] = useState("auto-awesome");
   const replyMutation = trpc.workroom.reply.useMutation();
-  const { installationId, preferences: notificationPreferences, sendTaskAlert } = useLumaNotifications();
+  const { preferences: notificationPreferences, sendTaskAlert } = useLumaNotifications();
 
   const selectedBot = useMemo(() => bots.find((bot) => bot.id === selectedBotId) ?? bots[0], [bots, selectedBotId]);
   const visibleMessages = selectedBot ? messages.filter((message) => message.botId === selectedBot.id) : [];
@@ -71,7 +71,7 @@ export default function WorkroomScreen() {
     updateBotStatus(selectedBot.id, "Working");
     try {
       updateTaskStatus(task.id, "Working", "Finishing the requested work.");
-      const response = await replyMutation.mutateAsync({ botName: selectedBot.name, botRole: selectedBot.role, botPurpose: selectedBot.purpose, message: clean, recentContext: visibleMessages.slice(-6).map((message) => ({ author: message.author, body: message.body })), notification: installationId ? { installationId, enabled: notificationPreferences.completion } : undefined });
+      const response = await replyMutation.mutateAsync({ botName: selectedBot.name, botRole: selectedBot.role, botPurpose: selectedBot.purpose, message: clean, recentContext: visibleMessages.slice(-6).map((message) => ({ author: message.author, body: message.body })) });
       updateTaskStatus(task.id, "Completed", "Result returned. You can refine or start a new task.");
       updateBotStatus(selectedBot.id, "Ready");
       addMessage({ botId: selectedBot.id, author: "bot", body: response.text, taskId: task.id });
