@@ -31,8 +31,29 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: "Workroom",
+          tabBarIcon: ({ color }) => <IconSymbol size={25} name="message.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="bots"
+        options={{
+          title: "Bots",
+          tabBarIcon: ({ color }) => <IconSymbol size={25} name="person.2.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="library"
+        options={{
+          title: "Library",
+          tabBarIcon: ({ color }) => <IconSymbol size={25} name="books.vertical.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="activity"
+        options={{
+          title: "Activity",
+          tabBarIcon: ({ color }) => <IconSymbol size={25} name="bell.fill" color={color} />,
         }}
       />
     </Tabs>
