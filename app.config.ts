@@ -93,6 +93,15 @@ const config: ExpoConfig = {
       },
     ],
     [
+      "expo-notifications",
+      {
+        icon: "./assets/images/android-icon-foreground.png",
+        color: "#77F3C4",
+        defaultChannel: "workroom-alerts",
+        enableBackgroundRemoteNotifications: false,
+      },
+    ],
+    [
       "expo-video",
       {
         supportsBackgroundPlayback: true,

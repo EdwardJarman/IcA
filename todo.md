@@ -12,3 +12,6 @@
 - [x] Add tests and validate key flows with deterministic data
 - [x] Refine mobile accessibility and responsive web behavior
 - [x] Save a final checkpoint and deliver the completed project
+- [x] Add notification permission, device registration, and task-event delivery for approval and completion alerts
+- [x] Add notification preference controls and safe local fallback behavior
+- [x] Validate notification event routing and checkpoint the notification update

@@ -9,6 +9,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useWorkroom, type TaskStatus, type WorkTask } from "@/lib/workroom-store";
 import { trpc } from "@/lib/trpc";
 import { approvalReason, fileSizeLabel, requiresApproval } from "@/lib/workroom-helpers";
+import { useLumaNotifications } from "@/lib/luma-notifications";
 
 const toneForStatus = (status: TaskStatus) => {
   if (status === "Approval required" || status === "Blocked") return "amber" as const;
@@ -28,6 +29,7 @@ export default function WorkroomScreen() {
   const [newBotRole, setNewBotRole] = useState("Researcher");
   const [newBotPurpose, setNewBotPurpose] = useState("");
   const replyMutation = trpc.workroom.reply.useMutation();
+  const { installationId, preferences: notificationPreferences, sendTaskAlert } = useLumaNotifications();
 
   const selectedBot = useMemo(() => bots.find((bot) => bot.id === selectedBotId) ?? bots[0], [bots, selectedBotId]);
   const visibleMessages = messages.filter((message) => message.botId === selectedBot.id);
@@ -54,6 +56,7 @@ export default function WorkroomScreen() {
     addMessage({ botId: selectedBot.id, author: "user", body: clean });
     if (requiresApproval(clean)) {
       addApproval({ botId: selectedBot.id, title: task.title, detail: approvalReason(clean), risk: "Medium" });
+      void sendTaskAlert({ kind: "approval", title: "Approval needed in Luma", body: `${selectedBot.name} needs your decision: ${task.title}`, url: "/activity" });
       addMessage({ botId: selectedBot.id, author: "bot", body: `I can prepare the work, but I need your approval before continuing with that step. ${approvalReason(clean)} You can make the decision from Activity.`, kind: "approval", taskId: task.id });
       setComposer("");
       updateBotStatus(selectedBot.id, "Ready");
@@ -70,6 +73,7 @@ export default function WorkroomScreen() {
         botPurpose: selectedBot.purpose,
         message: clean,
         recentContext: visibleMessages.slice(-6).map((message) => ({ author: message.author, body: message.body })),
+        notification: installationId ? { installationId, enabled: notificationPreferences.completion } : undefined,
       });
       updateTaskStatus(task.id, "Completed", "Task response returned. Review the result and redirect the next step if needed.");
       updateBotStatus(selectedBot.id, "Ready");
@@ -80,6 +84,9 @@ export default function WorkroomScreen() {
         taskId: task.id,
       });
       addMessage({ botId: selectedBot.id, author: "system", body: `Response completed · ${response.model} · ${response.capability}`, kind: "activity", taskId: task.id });
+      if (notificationPreferences.completion && !response.pushDelivery.accepted) {
+        void sendTaskAlert({ kind: "completion", title: `${selectedBot.name} completed a task`, body: response.text.slice(0, 170), url: "/" });
+      }
     } catch {
       updateTaskStatus(task.id, "Partially completed", "The response service was unavailable. Retry when model capacity is available.");
       updateBotStatus(selectedBot.id, "Ready");
