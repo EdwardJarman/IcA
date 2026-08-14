@@ -15,10 +15,10 @@ export const palette = {
   lavender: "#7563F5",
 };
 
-export function Avatar({ label, color = palette.mint, size = 38 }: { label: string; color?: string; size?: number }) {
+export function Avatar({ label, color = palette.mint, size = 38, icon }: { label: string; color?: string; size?: number; icon?: string }) {
   return (
     <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2, backgroundColor: color, borderColor: color }]}> 
-      <Text style={[styles.avatarLabel, { color: "#FFFFFF", fontSize: Math.max(12, size * 0.4) }]}>{label.slice(0, 1).toUpperCase()}</Text>
+      {icon ? <MaterialIcons name={icon as never} size={Math.max(16, size * 0.48)} color="#FFFFFF" /> : <Text style={[styles.avatarLabel, { color: "#FFFFFF", fontSize: Math.max(12, size * 0.4) }]}>{label.slice(0, 1).toUpperCase()}</Text>}
     </View>
   );
 }

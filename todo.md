@@ -23,3 +23,6 @@
 - [x] Remove all seeded Bots, tasks, conversations, routines, files, templates, and activity from Luma
 - [x] Build complete from-scratch onboarding and blank-workroom creation flows for arbitrary user-defined Bots
 - [x] Validate and checkpoint the clean-slate Luma experience
+- [x] Add color and icon controls to the from-scratch Bot creation flow
+- [x] Persist each user-selected Bot color and icon across the workroom
+- [x] Validate and checkpoint Bot identity customization

@@ -10,6 +10,7 @@ export type Bot = {
   purpose: string;
   avatar: string;
   color: string;
+  icon: string;
   status: "Ready" | "Working" | "Paused";
   memory: string;
   approvalRule: string;
@@ -26,7 +27,7 @@ export type WorkFile = { id: string; name: string; size: string; scope: "Bot-pri
 export type WorkNotification = { id: string; title: string; detail: string; tone: "mint" | "amber" | "coral"; read: boolean; createdAt: string };
 export type Activity = { id: string; title: string; detail: string; tone: "mint" | "amber" | "coral" | "muted"; createdAt: string };
 
-type BotInput = Pick<Bot, "name" | "role" | "purpose"> & { approvalRule?: string };
+type BotInput = Pick<Bot, "name" | "role" | "purpose"> & { approvalRule?: string; color?: string; icon?: string };
 type WorkroomContextValue = {
   ready: boolean;
   onboardingComplete: boolean;
@@ -119,7 +120,8 @@ export function WorkroomProvider({ children }: { children: ReactNode }) {
       role: values.role.trim(),
       purpose: values.purpose.trim(),
       avatar: values.name.trim().slice(0, 1).toUpperCase(),
-      color: BOT_COLORS[bots.length % BOT_COLORS.length],
+      color: values.color ?? BOT_COLORS[bots.length % BOT_COLORS.length],
+      icon: values.icon ?? "auto-awesome",
       status: "Ready",
       memory: "No preferences saved yet.",
       approvalRule: values.approvalRule?.trim() || "Ask before external, irreversible, or sensitive actions.",
