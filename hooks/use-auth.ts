@@ -1,7 +1,7 @@
 import * as Api from "@/lib/_core/api";
 import * as Auth from "@/lib/_core/auth";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 
 type UseAuthOptions = {
   autoFetch?: boolean;
@@ -122,6 +122,13 @@ export function useAuth(options?: UseAuthOptions) {
       setLoading(false);
     }
   }, [autoFetch, fetchUser]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") void fetchUser();
+    });
+    return () => subscription.remove();
+  }, [fetchUser]);
 
   useEffect(() => {
     console.log("[useAuth] State updated:", {

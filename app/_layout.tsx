@@ -1,16 +1,17 @@
 import "@/global.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as Notifications from "expo-notifications";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
-import { Platform } from "react-native";
+import { ActivityIndicator, Platform, Text, View } from "react-native";
 import "@/lib/_core/nativewind-pressable";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { WorkroomProvider } from "@/lib/workroom-store";
 import { LumaNotificationProvider } from "@/lib/luma-notifications";
+import { useAuth } from "@/hooks/use-auth";
 import {
   SafeAreaFrameContext,
   SafeAreaInsetsContext,
@@ -44,6 +45,23 @@ function NotificationNavigationObserver() {
   }, [router]);
 
   return null;
+}
+
+function SessionNavigator() {
+  const router = useRouter();
+  const segments = useSegments();
+  const { loading, isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    if (loading) return;
+    const route = segments[0];
+    const isAuthRoute = route === "sign-in" || route === "oauth";
+    if (!isAuthenticated && !isAuthRoute) router.replace("/sign-in");
+    if (isAuthenticated && route === "sign-in") router.replace("/(tabs)");
+  }, [isAuthenticated, loading, router, segments]);
+
+  if (loading) return <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#FBFAF7", gap: 12 }}><ActivityIndicator color="#17181B" /><Text style={{ color: "#777982", fontSize: 13 }}>Checking your secure session…</Text></View>;
+  return <Stack screenOptions={{ headerShown: false }}><Stack.Screen name="sign-in" /><Stack.Screen name="(tabs)" /><Stack.Screen name="oauth/callback" /></Stack>;
 }
 
 export default function RootLayout() {
@@ -107,10 +125,7 @@ export default function RootLayout() {
           {/* Default to hiding native headers so raw route segments don't appear (e.g. "(tabs)", "products/[id]"). */}
           {/* If a screen needs the native header, explicitly enable it and set a human title via Stack.Screen options. */}
           {/* in order for ios apps tab switching to work properly, use presentation: "fullScreenModal" for login page, whenever you decide to use presentation: "modal*/}
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="oauth/callback" />
-          </Stack>
+          <SessionNavigator />
           <StatusBar style="auto" />
           </LumaNotificationProvider>
         </QueryClientProvider>

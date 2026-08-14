@@ -26,3 +26,8 @@
 - [x] Add color and icon controls to the from-scratch Bot creation flow
 - [x] Persist each user-selected Bot color and icon across the workroom
 - [x] Validate and checkpoint Bot identity customization
+- [ ] Review and configure Google and GitHub OAuth requirements for Luma
+- [ ] Add Google and GitHub sign-in with session-aware application entry
+- [ ] Validate OAuth session behavior and provider credential configuration
+- [ ] Create public GitHub repository IcA and push the completed Luma project
+- [ ] Checkpoint and deliver the authentication and repository update
