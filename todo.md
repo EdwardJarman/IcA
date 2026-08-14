@@ -31,3 +31,7 @@
 - [x] Validate OAuth session behavior and provider credential configuration
 - [x] Create public GitHub repository IcA and push the completed Luma project
 - [x] Checkpoint and deliver the authentication and repository update
+- [x] Review managed database capabilities and define a user-scoped Luma persistence model
+- [x] Add account profile controls with provider identity, sign-out, and account storage status
+- [x] Persist each authenticated user’s Luma workroom data in the managed cloud database
+- [x] Migrate, test, and checkpoint the account and cloud persistence update

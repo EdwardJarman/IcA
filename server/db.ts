@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/mysql2";
 import { eq } from "drizzle-orm";
-import { InsertPushDevice, InsertUser, pushDevices, users } from "../drizzle/schema";
+import { InsertPushDevice, InsertUser, pushDevices, users, workroomSnapshots } from "../drizzle/schema";
+import type { WorkroomCloudSnapshot } from "../shared/workroom-snapshot";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -108,4 +109,18 @@ export async function getPushDevice(installationId: string) {
   if (!db) return undefined;
   const result = await db.select().from(pushDevices).where(eq(pushDevices.installationId, installationId)).limit(1);
   return result[0];
+}
+
+export async function getWorkroomSnapshot(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(workroomSnapshots).where(eq(workroomSnapshots.userId, userId)).limit(1);
+  return result[0];
+}
+
+export async function upsertWorkroomSnapshot(userId: number, snapshot: WorkroomCloudSnapshot) {
+  const db = await getDb();
+  if (!db) return false;
+  await db.insert(workroomSnapshots).values({ userId, snapshot }).onDuplicateKeyUpdate({ set: { snapshot, updatedAt: new Date() } });
+  return true;
 }

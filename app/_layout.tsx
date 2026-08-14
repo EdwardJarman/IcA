@@ -120,6 +120,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
+          <WorkroomProvider>
           <LumaNotificationProvider>
           <NotificationNavigationObserver />
           {/* Default to hiding native headers so raw route segments don't appear (e.g. "(tabs)", "products/[id]"). */}
@@ -128,6 +129,7 @@ export default function RootLayout() {
           <SessionNavigator />
           <StatusBar style="auto" />
           </LumaNotificationProvider>
+          </WorkroomProvider>
         </QueryClientProvider>
       </trpc.Provider>
     </GestureHandlerRootView>
@@ -138,7 +140,6 @@ export default function RootLayout() {
   if (shouldOverrideSafeArea) {
     return (
       <ThemeProvider>
-        <WorkroomProvider>
           <SafeAreaProvider initialMetrics={providerInitialMetrics}>
             <SafeAreaFrameContext.Provider value={frame}>
               <SafeAreaInsetsContext.Provider value={insets}>
@@ -146,16 +147,13 @@ export default function RootLayout() {
               </SafeAreaInsetsContext.Provider>
             </SafeAreaFrameContext.Provider>
           </SafeAreaProvider>
-        </WorkroomProvider>
       </ThemeProvider>
     );
   }
 
   return (
     <ThemeProvider>
-      <WorkroomProvider>
-        <SafeAreaProvider initialMetrics={providerInitialMetrics}>{content}</SafeAreaProvider>
-      </WorkroomProvider>
+      <SafeAreaProvider initialMetrics={providerInitialMetrics}>{content}</SafeAreaProvider>
     </ThemeProvider>
   );
 }

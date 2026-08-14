@@ -3,7 +3,8 @@
  * Extend this file with additional tables as your product grows.
  * Columns use camelCase to match both database fields and generated types.
  */
-import { boolean, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, int, json, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import type { WorkroomCloudSnapshot } from "../shared/workroom-snapshot";
 
 export const users = mysqlTable("users", {
   /**
@@ -37,3 +38,14 @@ export const pushDevices = mysqlTable("pushDevices", {
 
 export type PushDevice = typeof pushDevices.$inferSelect;
 export type InsertPushDevice = typeof pushDevices.$inferInsert;
+
+export const workroomSnapshots = mysqlTable("workroomSnapshots", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  snapshot: json("snapshot").$type<WorkroomCloudSnapshot>().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type WorkroomSnapshot = typeof workroomSnapshots.$inferSelect;
+export type InsertWorkroomSnapshot = typeof workroomSnapshots.$inferInsert;

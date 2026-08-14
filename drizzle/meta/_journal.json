@@ -15,6 +15,13 @@
       "when": 1786693800166,
       "tag": "0001_burly_invaders",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1786701285756,
+      "tag": "0002_groovy_colossus",
+      "breakpoints": true
     }
   ]
 }

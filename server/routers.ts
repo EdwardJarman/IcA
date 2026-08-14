@@ -4,7 +4,8 @@ import { invokeLLM, listLLMModels } from "./_core/llm";
 import { sendExpoPushAlert } from "./push-alerts";
 import * as db from "./db";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, router } from "./_core/trpc";
+import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { normalizeWorkroomSnapshot } from "../shared/workroom-snapshot";
 import { z } from "zod";
 
 export const appRouter = router({
@@ -86,6 +87,17 @@ You are a calm, precise AI teammate. Respond with a short, useful working note, 
         if (!device || !enabled) return { accepted: false, reason: "No eligible registered device is available." };
         return sendExpoPushAlert({ expoPushToken: device.expoPushToken, ...input });
       }),
+  }),
+
+  cloud: router({
+    load: protectedProcedure.input(z.object({ accountId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+      if (input.accountId !== ctx.user.id) throw new Error("Account mismatch.");
+      const record = await db.getWorkroomSnapshot(ctx.user.id);
+      return { snapshot: record?.snapshot ?? null, updatedAt: record?.updatedAt?.toISOString() ?? null };
+    }),
+    save: protectedProcedure
+      .input(z.object({ snapshot: z.record(z.string(), z.unknown()) }))
+      .mutation(async ({ ctx, input }) => ({ saved: await db.upsertWorkroomSnapshot(ctx.user.id, normalizeWorkroomSnapshot(input.snapshot)) })),
   }),
 
   // TODO: add feature routers here, e.g.
