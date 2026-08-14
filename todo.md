@@ -19,3 +19,7 @@
 - [x] Redesign Luma as an original minimalist Bot-first workroom for mobile and desktop
 - [x] Simplify Bot, Library, and Activity surfaces while preserving accessibility and task transparency
 - [x] Validate and checkpoint the minimalist UI refinement
+- [x] Research the Grok Bot creation and first-run experience for clean-slate interaction patterns
+- [x] Remove all seeded Bots, tasks, conversations, routines, files, templates, and activity from Luma
+- [x] Build complete from-scratch onboarding and blank-workroom creation flows for arbitrary user-defined Bots
+- [x] Validate and checkpoint the clean-slate Luma experience

@@ -17,3 +17,9 @@ Luma will become light-first with ink text, quiet gray dividers, an original sof
 ## Non-copying boundary
 
 Luma will not reuse Grok Bot names, icon shapes, logo treatment, type styling, layouts, copy, screenshots, or proprietary assets. The goal is to apply general interaction principles—Bot-first navigation, conversational work management, clarity, space, and progressive disclosure—to a distinct Luma product.
+
+## Clean-slate onboarding findings
+
+The official Grok Bot documentation describes a low-friction first-use model: introduce the concepts briefly, let the user create a named Bot, give that Bot a primary job and working style, then move straight into the first real task. The documentation specifically emphasizes that no workflow builder or prior Bot setup should be necessary before a user can begin. It also frames an effective first task in terms of the outcome, relevant sources, constraints, deliverable, and review point. Sources reviewed: https://docs.x.ai/grok-bot/overview and https://docs.x.ai/grok-bot/get-started (accessed 2026-08-14).
+
+For Luma, this becomes an original three-step first-run sequence: **Name the Bot**, **Describe its work**, and **Set the approval boundary**. It intentionally contains no pre-made Bot roster, suggested roles, task examples, templates, files, activity, or routines. The first Bot is created only from the user's wording. After creation, Luma opens an empty Bot conversation with a simple prompt to state the desired result; skills, routines, files, collaboration, and notifications become available only after the user creates or connects them.

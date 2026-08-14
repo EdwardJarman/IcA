@@ -1,394 +1,137 @@
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import * as DocumentPicker from "expo-document-picker";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { Avatar, IconButton, SectionTitle, StatusPill, palette } from "@/components/luma-primitives";
+import { Avatar, EmptyState, IconButton, SectionTitle, StatusPill, palette } from "@/components/luma-primitives";
 import { ScreenContainer } from "@/components/screen-container";
+import { useLumaNotifications } from "@/lib/luma-notifications";
 import { useWorkroom, type TaskStatus, type WorkTask } from "@/lib/workroom-store";
 import { trpc } from "@/lib/trpc";
 import { approvalReason, fileSizeLabel, requiresApproval } from "@/lib/workroom-helpers";
-import { useLumaNotifications } from "@/lib/luma-notifications";
 
-const toneForStatus = (status: TaskStatus) => {
-  if (status === "Approval required" || status === "Blocked") return "amber" as const;
-  if (status === "Failed" || status === "Cancelled") return "coral" as const;
-  if (status === "Paused" || status === "Waiting for input") return "muted" as const;
-  return "mint" as const;
-};
+const toneForStatus = (status: TaskStatus) => status === "Approval required" || status === "Blocked" ? "amber" as const : status === "Failed" || status === "Cancelled" ? "coral" as const : status === "Paused" || status === "Waiting for input" ? "muted" as const : "mint" as const;
 
 export default function WorkroomScreen() {
   const router = useRouter();
-  const { ready, onboardingComplete, completeOnboarding, bots, selectedBotId, selectBot, messages, tasks, approvals, addFile, addMessage, addTask, updateTaskStatus, updateBotStatus, createBot, addApproval } = useWorkroom();
+  const { ready, bots, selectedBotId, selectBot, messages, tasks, approvals, addFile, addMessage, addTask, updateTaskStatus, updateBotStatus, createBot, addApproval } = useWorkroom();
   const [composer, setComposer] = useState("");
   const [botPickerOpen, setBotPickerOpen] = useState(false);
   const [newBotOpen, setNewBotOpen] = useState(false);
+  const [setupStep, setSetupStep] = useState<1 | 2 | 3>(1);
   const [taskOpen, setTaskOpen] = useState<WorkTask | null>(null);
   const [newBotName, setNewBotName] = useState("");
-  const [newBotRole, setNewBotRole] = useState("Researcher");
+  const [newBotRole, setNewBotRole] = useState("");
   const [newBotPurpose, setNewBotPurpose] = useState("");
+  const [newBotApproval, setNewBotApproval] = useState("Ask me before anything external, irreversible, or sensitive.");
   const replyMutation = trpc.workroom.reply.useMutation();
   const { installationId, preferences: notificationPreferences, sendTaskAlert } = useLumaNotifications();
 
   const selectedBot = useMemo(() => bots.find((bot) => bot.id === selectedBotId) ?? bots[0], [bots, selectedBotId]);
-  const visibleMessages = messages.filter((message) => message.botId === selectedBot.id);
-  const visibleTasks = tasks.filter((task) => task.botId === selectedBot.id);
-  const pendingApproval = approvals.find((approval) => approval.botId === selectedBot.id && approval.state === "Pending");
+  const visibleMessages = selectedBot ? messages.filter((message) => message.botId === selectedBot.id) : [];
+  const visibleTasks = selectedBot ? tasks.filter((task) => task.botId === selectedBot.id) : [];
+  const pendingApproval = selectedBot ? approvals.find((approval) => approval.botId === selectedBot.id && approval.state === "Pending") : undefined;
+
+  const openBotCreation = () => { setSetupStep(1); setNewBotOpen(true); };
+  const closeBotCreation = () => { setNewBotOpen(false); setSetupStep(1); };
+
+  const handleCreateBot = () => {
+    if (!newBotName.trim()) { setSetupStep(1); Alert.alert("Name your Bot", "Choose a short name that makes this teammate easy to recognize."); return; }
+    if (!newBotRole.trim() || !newBotPurpose.trim()) { setSetupStep(2); Alert.alert("Describe the work", "Add a primary job and a clear description of what this Bot should own."); return; }
+    createBot({ name: newBotName, role: newBotRole, purpose: newBotPurpose, approvalRule: newBotApproval });
+    setNewBotName(""); setNewBotRole(""); setNewBotPurpose(""); setNewBotApproval("Ask me before anything external, irreversible, or sensitive.");
+    closeBotCreation();
+  };
 
   const handleSend = async () => {
     const clean = composer.trim();
-    if (!clean) return;
+    if (!clean || !selectedBot) return;
+    const requiresReview = requiresApproval(clean);
     const task = addTask({
       botId: selectedBot.id,
-      title: clean.length > 48 ? `${clean.slice(0, 48)}…` : clean,
-      status: requiresApproval(clean) ? "Approval required" : "Planning",
-      summary: "Luma is creating a safe working plan before continuing.",
-      nextAction: requiresApproval(clean) ? "Review the requested sensitive action before Luma continues." : "Review the concise plan and continue with low-risk steps.",
-      risk: requiresApproval(clean) ? "Medium" : "Low",
-      steps: [
-        { id: "scope", label: "Clarify the requested outcome", state: "active" },
-        { id: "plan", label: "Prepare a short plan", state: "pending" },
-        { id: "work", label: "Complete low-risk work", state: "pending" },
-        { id: "review", label: "Return a concise result", state: "pending" },
-      ],
+      title: clean.length > 52 ? `${clean.slice(0, 52)}…` : clean,
+      status: requiresReview ? "Approval required" : "Planning",
+      summary: requiresReview ? "Waiting for your decision before any sensitive step." : "Preparing a focused response from your instructions.",
+      nextAction: requiresReview ? "Review the proposed action in Activity." : "Review the result and decide what happens next.",
+      risk: requiresReview ? "Medium" : "Low",
+      steps: [{ id: "scope", label: "Understand the result you want", state: "active" }, { id: "work", label: "Do the safe work", state: "pending" }, { id: "return", label: "Return the result", state: "pending" }],
     });
     addMessage({ botId: selectedBot.id, author: "user", body: clean });
-    if (requiresApproval(clean)) {
+    setComposer("");
+    if (requiresReview) {
       addApproval({ botId: selectedBot.id, title: task.title, detail: approvalReason(clean), risk: "Medium" });
-      void sendTaskAlert({ kind: "approval", title: "Approval needed in Luma", body: `${selectedBot.name} needs your decision: ${task.title}`, url: "/activity" });
-      addMessage({ botId: selectedBot.id, author: "bot", body: `I can prepare the work, but I need your approval before continuing with that step. ${approvalReason(clean)} You can make the decision from Activity.`, kind: "approval", taskId: task.id });
-      setComposer("");
-      updateBotStatus(selectedBot.id, "Ready");
+      void sendTaskAlert({ kind: "approval", title: "Approval needed in Luma", body: `${selectedBot.name} needs your decision`, url: "/activity" });
+      addMessage({ botId: selectedBot.id, author: "bot", body: `I can prepare the work, but I need your approval before this step. ${approvalReason(clean)}`, kind: "approval", taskId: task.id });
       return;
     }
-    addMessage({ botId: selectedBot.id, author: "system", body: "Task queued · Luma is preparing a short plan and will pause before sensitive actions.", kind: "activity", taskId: task.id });
     updateBotStatus(selectedBot.id, "Working");
-    setComposer("");
     try {
-      updateTaskStatus(task.id, "Working", "Review the plan, then continue through the remaining low-risk steps.");
-      const response = await replyMutation.mutateAsync({
-        botName: selectedBot.name,
-        botRole: selectedBot.role,
-        botPurpose: selectedBot.purpose,
-        message: clean,
-        recentContext: visibleMessages.slice(-6).map((message) => ({ author: message.author, body: message.body })),
-        notification: installationId ? { installationId, enabled: notificationPreferences.completion } : undefined,
-      });
-      updateTaskStatus(task.id, "Completed", "Task response returned. Review the result and redirect the next step if needed.");
+      updateTaskStatus(task.id, "Working", "Finishing the requested work.");
+      const response = await replyMutation.mutateAsync({ botName: selectedBot.name, botRole: selectedBot.role, botPurpose: selectedBot.purpose, message: clean, recentContext: visibleMessages.slice(-6).map((message) => ({ author: message.author, body: message.body })), notification: installationId ? { installationId, enabled: notificationPreferences.completion } : undefined });
+      updateTaskStatus(task.id, "Completed", "Result returned. You can refine or start a new task.");
       updateBotStatus(selectedBot.id, "Ready");
-      addMessage({
-        botId: selectedBot.id,
-        author: "bot",
-        body: response.text,
-        taskId: task.id,
-      });
-      addMessage({ botId: selectedBot.id, author: "system", body: `Response completed · ${response.model} · ${response.capability}`, kind: "activity", taskId: task.id });
-      if (notificationPreferences.completion && !response.pushDelivery.accepted) {
-        void sendTaskAlert({ kind: "completion", title: `${selectedBot.name} completed a task`, body: response.text.slice(0, 170), url: "/" });
-      }
+      addMessage({ botId: selectedBot.id, author: "bot", body: response.text, taskId: task.id });
+      if (notificationPreferences.completion && !response.pushDelivery.accepted) void sendTaskAlert({ kind: "completion", title: `${selectedBot.name} completed a task`, body: response.text.slice(0, 170), url: "/" });
     } catch {
-      updateTaskStatus(task.id, "Partially completed", "The response service was unavailable. Retry when model capacity is available.");
+      updateTaskStatus(task.id, "Partially completed", "The response service is unavailable. Try again when model capacity returns.");
       updateBotStatus(selectedBot.id, "Ready");
-      addMessage({
-        botId: selectedBot.id,
-        author: "bot",
-        body: "I saved your task and prepared a safe local plan, but the response service is unavailable right now. Nothing external was attempted. Please retry when model capacity is available.",
-        taskId: task.id,
-      });
+      addMessage({ botId: selectedBot.id, author: "bot", body: "I saved your request, but the response service is unavailable right now. Nothing external was attempted. Please retry shortly.", taskId: task.id });
     }
   };
 
   const handleAttach = async () => {
+    if (!selectedBot) return;
     try {
       const result = await DocumentPicker.getDocumentAsync({ multiple: false, copyToCacheDirectory: true, type: "*/*" });
       if (result.canceled) return;
       const asset = result.assets[0];
-      addFile({
-        name: asset.name,
-        size: fileSizeLabel(asset.size),
-        scope: "Bot-private",
-        owner: selectedBot.name,
-      });
+      addFile({ name: asset.name, size: fileSizeLabel(asset.size), scope: "Bot-private", owner: selectedBot.name });
       addMessage({ botId: selectedBot.id, author: "system", body: `Attached ${asset.name}. It is available only to ${selectedBot.name} in this local workroom.`, kind: "activity", attachmentName: asset.name });
-    } catch {
-      Alert.alert("File attachment unavailable", "Luma could not attach this file. Please try again from the device file picker.");
-    }
+    } catch { Alert.alert("File attachment unavailable", "Luma could not attach this file. Please try again from the device file picker."); }
   };
 
-  const handleCreateBot = () => {
-    if (!newBotName.trim() || !newBotPurpose.trim()) {
-      Alert.alert("Add a name and goal", "A Bot needs a short name and a clear purpose before it can join the workroom.");
-      return;
-    }
-    createBot({ name: newBotName.trim(), role: newBotRole.trim() || "Assistant", purpose: newBotPurpose.trim() });
-    setNewBotName("");
-    setNewBotRole("Researcher");
-    setNewBotPurpose("");
-    setNewBotOpen(false);
-  };
-
-  const changeTaskState = (status: TaskStatus) => {
-    if (!taskOpen) return;
-    updateTaskStatus(taskOpen.id, status, status === "Cancelled" ? "This task will not take further actions." : taskOpen.nextAction);
-    setTaskOpen({ ...taskOpen, status });
-  };
+  const changeTaskState = (status: TaskStatus) => { if (!taskOpen) return; updateTaskStatus(taskOpen.id, status, status === "Cancelled" ? "This task will not take further actions." : taskOpen.nextAction); setTaskOpen({ ...taskOpen, status }); };
 
   return (
     <ScreenContainer containerClassName="bg-background" className="flex-1" edges={["top", "left", "right"]}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <View style={styles.topbar}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Switch Bot" onPress={() => setBotPickerOpen(true)} style={({ pressed }) => [styles.botSelector, pressed && styles.pressed]}>
-            <Avatar label={selectedBot.avatar} color={selectedBot.color} size={38} />
-            <View style={styles.botSelectorCopy}>
-              <Text style={styles.botSelectorName}>{selectedBot.name}</Text>
-              <Text style={styles.botSelectorRole}>{selectedBot.role} · {selectedBot.status}</Text>
-            </View>
-            <MaterialIcons name="keyboard-arrow-down" size={20} color={palette.mist} />
-          </Pressable>
-          <View style={styles.topbarActions}>
-            <IconButton icon="add" label="Create Bot" onPress={() => setNewBotOpen(true)} tone="mint" />
-            <IconButton icon="more-horiz" label="Open workroom options" onPress={() => router.navigate("/activity" as never)} />
-          </View>
+          {selectedBot ? <Pressable accessibilityRole="button" accessibilityLabel="Switch Bot" onPress={() => setBotPickerOpen(true)} style={({ pressed }) => [styles.botSelector, pressed && styles.pressed]}><Avatar label={selectedBot.avatar} color={selectedBot.color} size={34} /><View style={styles.botSelectorCopy}><Text style={styles.botSelectorName}>{selectedBot.name}</Text><Text style={styles.botSelectorRole}>{selectedBot.role}</Text></View><MaterialIcons name="keyboard-arrow-down" size={19} color={palette.mist} /></Pressable> : <View style={styles.brand}><View style={styles.brandMark}><MaterialIcons name="auto-awesome" size={16} color="#FFFFFF" /></View><Text style={styles.brandName}>Luma</Text></View>}
+          <View style={styles.topbarActions}><IconButton icon="add" label="Create a Bot" onPress={openBotCreation} tone="mint" />{selectedBot ? <IconButton icon="more-horiz" label="Open Activity" onPress={() => router.navigate("/activity" as never)} /> : null}</View>
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <View style={styles.chatHeading}><Text style={styles.chatHeadingTitle}>Bots</Text><Text style={styles.chatHeadingMeta}>{bots.filter((bot) => bot.status === "Working").length ? `${bots.filter((bot) => bot.status === "Working").length} working` : "All caught up"}</Text></View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.botRail}>
-            {bots.slice(0, 8).map((bot) => <Pressable key={bot.id} accessibilityRole="button" accessibilityLabel={`Open ${bot.name}`} onPress={() => selectBot(bot.id)} style={({ pressed }) => [styles.botRailItem, bot.id === selectedBot.id && styles.botRailItemSelected, pressed && styles.pressed]}><Avatar label={bot.avatar} color={bot.color} size={46} /><Text numberOfLines={1} style={[styles.botRailName, bot.id === selectedBot.id && styles.botRailNameSelected]}>{bot.name}</Text></Pressable>)}
-          </ScrollView>
-
-          <View style={styles.conversationHead}><View><Text style={styles.conversationTitle}>{selectedBot.name}</Text><Text style={styles.conversationDetail}>{selectedBot.role} · {selectedBot.status}</Text></View><StatusPill label={selectedBot.status === "Working" ? "Working" : "Ready"} tone={selectedBot.status === "Working" ? "mint" : "muted"} /></View>
-
-          {pendingApproval ? (
-            <Pressable accessibilityRole="button" onPress={() => router.navigate("/activity" as never)} style={({ pressed }) => [styles.approvalBanner, pressed && styles.pressed]}>
-              <View style={styles.approvalIcon}><MaterialIcons name="shield" size={19} color={palette.amber} /></View>
-              <View style={styles.approvalCopy}>
-                <Text style={styles.approvalTitle}>Decision waiting for you</Text>
-                <Text style={styles.approvalDetail}>{pendingApproval.title} · {pendingApproval.risk} risk</Text>
-              </View>
-              <MaterialIcons name="chevron-right" size={21} color={palette.amber} />
-            </Pressable>
-          ) : null}
-
-          {visibleTasks.slice(0, 1).map((task) => (
-            <Pressable key={task.id} accessibilityRole="button" onPress={() => setTaskOpen(task)} style={({ pressed }) => [styles.taskCard, pressed && styles.pressed]}>
-              <View style={styles.taskHead}>
-                <View style={styles.taskTitleWrap}>
-                  <Text numberOfLines={1} style={styles.taskTitle}>{task.title}</Text>
-                  <Text numberOfLines={2} style={styles.taskSummary}>{task.summary}</Text>
-                </View>
-                <StatusPill label={task.status} tone={toneForStatus(task.status)} />
-              </View>
-              <View style={styles.taskFooter}><Text style={styles.taskNext}>{task.nextAction}</Text><Text style={styles.taskOpen}>Details</Text></View>
-            </Pressable>
-          ))}
-
-          <SectionTitle eyebrow="Conversation" title={`Work with ${selectedBot.name}`} />
-          <View style={styles.conversation}>
-            {visibleMessages.map((message) => {
-              const isUser = message.author === "user";
-              const isSystem = message.author === "system";
-              if (isSystem) {
-                return <View key={message.id} style={styles.activityRow}><View style={styles.activityDot} /><Text style={styles.activityText}>{message.body}</Text><Text style={styles.activityTime}>{message.createdAt}</Text></View>;
-              }
-              return (
-                <View key={message.id} style={[styles.messageRow, isUser && styles.messageRowUser]}>
-                  {!isUser ? <Avatar label={selectedBot.avatar} color={selectedBot.color} size={29} /> : null}
-                  <View style={[styles.messageBubble, isUser ? styles.userBubble : styles.botBubble]}>
-                    <Text style={[styles.messageAuthor, isUser && styles.userAuthor]}>{isUser ? "You" : selectedBot.name}</Text>
-                    <Text style={[styles.messageText, isUser && styles.userText]}>{message.body}</Text>
-                    {message.attachmentName ? <View style={styles.inlineAttachment}><MaterialIcons name="attach-file" size={15} color={palette.mint} /><Text style={styles.inlineAttachmentText}>{message.attachmentName}</Text></View> : null}
-                    <Text style={[styles.messageTime, isUser && styles.userTime]}>{message.createdAt}</Text>
-                  </View>
-                </View>
-              );
-            })}
+        {!ready ? <View style={styles.loading}><Text style={styles.loadingText}>Opening your workroom…</Text></View> : !selectedBot ? (
+          <View style={styles.emptyWorkspace}>
+            <View style={styles.orbit}><View style={styles.orbitDot} /><View style={[styles.orbitDot, styles.orbitDotTwo]} /><View style={[styles.orbitDot, styles.orbitDotThree]} /><View style={styles.orbitCore}><MaterialIcons name="auto-awesome" size={31} color="#FFFFFF" /></View></View>
+            <Text style={styles.emptyTitle}>Make your first Bot.</Text>
+            <Text style={styles.emptyDetail}>Give it a name, define the work it owns, and decide when it should stop for you. Nothing is pre-made.</Text>
+            <Pressable accessibilityRole="button" onPress={openBotCreation} style={({ pressed }) => [styles.createFirstButton, pressed && styles.pressed]}><Text style={styles.createFirstText}>Create a Bot</Text><MaterialIcons name="arrow-forward" size={19} color="#FFFFFF" /></Pressable>
+            <Text style={styles.emptyFootnote}>You can add files, skills, routines, and more Bots only when you need them.</Text>
           </View>
-        </ScrollView>
-
-        <View style={styles.composerWrap}>
-          <View style={styles.composer}>
-            <Pressable accessibilityRole="button" accessibilityLabel="Attach file" onPress={handleAttach} style={({ pressed }) => [styles.attachButton, pressed && styles.pressed]}>
-              <MaterialIcons name="add" size={23} color={palette.mint} />
-            </Pressable>
-            <TextInput value={composer} onChangeText={setComposer} placeholder={`Message ${selectedBot.name}`} placeholderTextColor="#788292" multiline style={styles.input} accessibilityLabel={`Message ${selectedBot.name}`} />
-            <Pressable accessibilityRole="button" accessibilityLabel="Send message" onPress={() => void handleSend()} style={({ pressed }) => [styles.sendButton, (!composer.trim() || replyMutation.isPending) && styles.sendDisabled, pressed && composer.trim() && styles.pressed]} disabled={!composer.trim() || replyMutation.isPending}>
-              <MaterialIcons name="arrow-upward" size={20} color={composer.trim() ? palette.ink : "#6C7481"} />
-            </Pressable>
-          </View>
-        </View>
+        ) : (
+          <>
+            <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.botRail}>{bots.map((bot) => <Pressable key={bot.id} accessibilityRole="button" accessibilityLabel={`Open ${bot.name}`} onPress={() => selectBot(bot.id)} style={({ pressed }) => [styles.botRailItem, pressed && styles.pressed]}><Avatar label={bot.avatar} color={bot.color} size={45} /><Text numberOfLines={1} style={[styles.botRailName, bot.id === selectedBot.id && styles.botRailNameSelected]}>{bot.name}</Text></Pressable>)}</ScrollView>
+              <View style={styles.conversationHead}><View><Text style={styles.conversationTitle}>{selectedBot.name}</Text><Text style={styles.conversationDetail}>{selectedBot.purpose}</Text></View><StatusPill label={selectedBot.status === "Working" ? "Working" : "Ready"} tone={selectedBot.status === "Working" ? "mint" : "muted"} /></View>
+              {pendingApproval ? <Pressable accessibilityRole="button" onPress={() => router.navigate("/activity" as never)} style={({ pressed }) => [styles.approvalBanner, pressed && styles.pressed]}><MaterialIcons name="shield" size={18} color={palette.amber} /><View style={styles.approvalCopy}><Text style={styles.approvalTitle}>A decision is waiting</Text><Text style={styles.approvalDetail}>{pendingApproval.title}</Text></View><MaterialIcons name="chevron-right" size={20} color={palette.amber} /></Pressable> : null}
+              {visibleTasks.slice(0, 1).map((task) => <Pressable key={task.id} accessibilityRole="button" onPress={() => setTaskOpen(task)} style={({ pressed }) => [styles.taskCard, pressed && styles.pressed]}><View style={styles.taskHead}><View style={styles.taskTitleWrap}><Text numberOfLines={1} style={styles.taskTitle}>{task.title}</Text><Text numberOfLines={2} style={styles.taskSummary}>{task.summary}</Text></View><StatusPill label={task.status} tone={toneForStatus(task.status)} /></View><View style={styles.taskFooter}><Text style={styles.taskNext}>{task.nextAction}</Text><Text style={styles.taskOpen}>Details</Text></View></Pressable>)}
+              {visibleMessages.length ? <><SectionTitle eyebrow="Conversation" title={`Work with ${selectedBot.name}`} /><View style={styles.conversation}>{visibleMessages.map((message) => { const isUser = message.author === "user"; if (message.author === "system") return <View key={message.id} style={styles.activityRow}><View style={styles.activityDot} /><Text style={styles.activityText}>{message.body}</Text></View>; return <View key={message.id} style={[styles.messageRow, isUser && styles.messageRowUser]}>{!isUser ? <Avatar label={selectedBot.avatar} color={selectedBot.color} size={28} /> : null}<View style={[styles.messageBubble, isUser ? styles.userBubble : styles.botBubble]}><Text style={[styles.messageText, isUser && styles.userText]}>{message.body}</Text>{message.attachmentName ? <View style={styles.inlineAttachment}><MaterialIcons name="attach-file" size={14} color={palette.mint} /><Text style={styles.inlineAttachmentText}>{message.attachmentName}</Text></View> : null}<Text style={[styles.messageTime, isUser && styles.userTime]}>{message.createdAt}</Text></View></View>; })}</View></> : <EmptyState icon="forum" title={`Start a conversation with ${selectedBot.name}`} detail="Describe the outcome you want, the important context, and when this Bot should pause for you." />}
+            </ScrollView>
+            <View style={styles.composerWrap}><View style={styles.composer}><Pressable accessibilityRole="button" accessibilityLabel="Attach file" onPress={handleAttach} style={({ pressed }) => [styles.attachButton, pressed && styles.pressed]}><MaterialIcons name="add" size={22} color={palette.mist} /></Pressable><TextInput value={composer} onChangeText={setComposer} placeholder={`Message ${selectedBot.name}`} placeholderTextColor="#8A8C94" multiline style={styles.input} accessibilityLabel={`Message ${selectedBot.name}`} /><Pressable accessibilityRole="button" accessibilityLabel="Send message" onPress={() => void handleSend()} style={({ pressed }) => [styles.sendButton, (!composer.trim() || replyMutation.isPending) && styles.sendDisabled, pressed && composer.trim() && styles.pressed]} disabled={!composer.trim() || replyMutation.isPending}><MaterialIcons name="arrow-upward" size={19} color="#FFFFFF" /></Pressable></View></View>
+          </>
+        )}
       </KeyboardAvoidingView>
 
-      <Modal transparent visible={botPickerOpen} animationType="slide" onRequestClose={() => setBotPickerOpen(false)}>
-        <Pressable style={styles.modalShade} onPress={() => setBotPickerOpen(false)}>
-          <Pressable style={styles.sheet} onPress={(event) => event.stopPropagation()}>
-            <View style={styles.sheetGrabber} />
-            <SectionTitle eyebrow="Bots" title="Choose a teammate" action={<IconButton icon="add" label="Create a new Bot" onPress={() => { setBotPickerOpen(false); setNewBotOpen(true); }} tone="mint" />} />
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sheetList}>
-              {bots.map((bot) => (
-                <Pressable key={bot.id} accessibilityRole="button" onPress={() => { selectBot(bot.id); setBotPickerOpen(false); }} style={({ pressed }) => [styles.botChoice, bot.id === selectedBot.id && styles.botChoiceActive, pressed && styles.pressed]}>
-                  <Avatar label={bot.avatar} color={bot.color} size={42} />
-                  <View style={styles.botChoiceCopy}><Text style={styles.botChoiceName}>{bot.name}</Text><Text numberOfLines={1} style={styles.botChoiceRole}>{bot.role} · {bot.lastActive}</Text></View>
-                  <StatusPill label={bot.status} tone={bot.status === "Working" ? "mint" : bot.status === "Paused" ? "amber" : "muted"} />
-                </Pressable>
-              ))}
-            </ScrollView>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <Modal transparent visible={botPickerOpen} animationType="slide" onRequestClose={() => setBotPickerOpen(false)}><Pressable style={styles.modalShade} onPress={() => setBotPickerOpen(false)}><Pressable style={styles.sheet} onPress={(event) => event.stopPropagation()}><View style={styles.sheetGrabber} /><SectionTitle eyebrow="Bots" title="Your teammates" action={<IconButton icon="add" label="Create a Bot" onPress={() => { setBotPickerOpen(false); openBotCreation(); }} tone="mint" />} /><ScrollView contentContainerStyle={styles.sheetList}>{bots.map((bot) => <Pressable key={bot.id} accessibilityRole="button" onPress={() => { selectBot(bot.id); setBotPickerOpen(false); }} style={({ pressed }) => [styles.botChoice, bot.id === selectedBot.id && styles.botChoiceActive, pressed && styles.pressed]}><Avatar label={bot.avatar} color={bot.color} size={41} /><View style={styles.botChoiceCopy}><Text style={styles.botChoiceName}>{bot.name}</Text><Text numberOfLines={1} style={styles.botChoiceRole}>{bot.role}</Text></View><StatusPill label={bot.status} tone={bot.status === "Working" ? "mint" : bot.status === "Paused" ? "amber" : "muted"} /></Pressable>)}</ScrollView></Pressable></Pressable></Modal>
 
-      <Modal transparent visible={newBotOpen} animationType="slide" onRequestClose={() => setNewBotOpen(false)}>
-        <Pressable style={styles.modalShade} onPress={() => setNewBotOpen(false)}>
-          <Pressable style={styles.sheet} onPress={(event) => event.stopPropagation()}>
-            <View style={styles.sheetGrabber} />
-            <SectionTitle eyebrow="New Bot" title="Give work a clear owner" />
-            <Text style={styles.sheetLead}>Start with a small role and a specific goal. You can refine memory, permissions, and skills later.</Text>
-            <Text style={styles.fieldLabel}>NAME</Text>
-            <TextInput value={newBotName} onChangeText={setNewBotName} placeholder="e.g. Sol" placeholderTextColor="#788292" style={styles.field} />
-            <Text style={styles.fieldLabel}>ROLE</Text>
-            <TextInput value={newBotRole} onChangeText={setNewBotRole} placeholder="Researcher" placeholderTextColor="#788292" style={styles.field} />
-            <Text style={styles.fieldLabel}>GOAL</Text>
-            <TextInput value={newBotPurpose} onChangeText={setNewBotPurpose} placeholder="What should this Bot own?" placeholderTextColor="#788292" multiline style={[styles.field, styles.goalField]} />
-            <Pressable accessibilityRole="button" onPress={handleCreateBot} style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}><Text style={styles.primaryButtonText}>Create Bot</Text><MaterialIcons name="arrow-forward" size={18} color={palette.ink} /></Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <Modal transparent visible={newBotOpen} animationType="slide" onRequestClose={closeBotCreation}><Pressable style={styles.modalShade} onPress={closeBotCreation}><Pressable style={styles.sheet} onPress={(event) => event.stopPropagation()}><View style={styles.sheetGrabber} /><View style={styles.setupProgress}>{[1, 2, 3].map((step) => <View key={step} style={[styles.setupProgressDot, step <= setupStep && styles.setupProgressDotActive]} />)}</View><Text style={styles.setupEyebrow}>CREATE A BOT · {setupStep} OF 3</Text>{setupStep === 1 ? <><Text style={styles.setupTitle}>Give your teammate a name.</Text><Text style={styles.sheetLead}>A short name makes it easy to recognize in conversations and notifications.</Text><Text style={styles.fieldLabel}>NAME</Text><TextInput autoFocus value={newBotName} onChangeText={setNewBotName} placeholder="e.g. Kai" placeholderTextColor="#8A8C94" style={styles.field} /></> : null}{setupStep === 2 ? <><Text style={styles.setupTitle}>Describe the work it owns.</Text><Text style={styles.sheetLead}>Keep it focused. You can create another Bot when the work naturally splits.</Text><Text style={styles.fieldLabel}>PRIMARY JOB</Text><TextInput value={newBotRole} onChangeText={setNewBotRole} placeholder="e.g. Product researcher" placeholderTextColor="#8A8C94" style={styles.field} /><Text style={styles.fieldLabel}>WORKING DESCRIPTION</Text><TextInput value={newBotPurpose} onChangeText={setNewBotPurpose} placeholder="What should this Bot help with?" placeholderTextColor="#8A8C94" multiline style={[styles.field, styles.detailField]} /></> : null}{setupStep === 3 ? <><Text style={styles.setupTitle}>Set the pause point.</Text><Text style={styles.sheetLead}>Tell your Bot when it must bring a decision back to you. You can change this later.</Text><Text style={styles.fieldLabel}>APPROVAL BOUNDARY</Text><TextInput value={newBotApproval} onChangeText={setNewBotApproval} placeholder="When should this Bot ask?" placeholderTextColor="#8A8C94" multiline style={[styles.field, styles.detailField]} /></> : null}<View style={styles.setupActions}>{setupStep > 1 ? <Pressable accessibilityRole="button" onPress={() => setSetupStep((setupStep - 1) as 1 | 2)} style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}><Text style={styles.backButtonText}>Back</Text></Pressable> : <View style={styles.backSpacer} />}{setupStep < 3 ? <Pressable accessibilityRole="button" onPress={() => { if (setupStep === 1 && !newBotName.trim()) { Alert.alert("Name your Bot", "Choose a short name to continue."); return; } if (setupStep === 2 && (!newBotRole.trim() || !newBotPurpose.trim())) { Alert.alert("Describe the work", "Add both a job and working description to continue."); return; } setSetupStep((setupStep + 1) as 2 | 3); }} style={({ pressed }) => [styles.nextButton, pressed && styles.pressed]}><Text style={styles.nextButtonText}>Continue</Text><MaterialIcons name="arrow-forward" size={18} color="#FFFFFF" /></Pressable> : <Pressable accessibilityRole="button" onPress={handleCreateBot} style={({ pressed }) => [styles.nextButton, pressed && styles.pressed]}><Text style={styles.nextButtonText}>Create Bot</Text><MaterialIcons name="arrow-forward" size={18} color="#FFFFFF" /></Pressable>}</View></Pressable></Pressable></Modal>
 
-      <Modal transparent visible={Boolean(taskOpen)} animationType="slide" onRequestClose={() => setTaskOpen(null)}>
-        <Pressable style={styles.modalShade} onPress={() => setTaskOpen(null)}>
-          <Pressable style={styles.sheet} onPress={(event) => event.stopPropagation()}>
-            <View style={styles.sheetGrabber} />
-            {taskOpen ? <>
-              <View style={styles.taskModalHead}><View style={styles.taskTitleWrap}><Text style={styles.taskModalTitle}>{taskOpen.title}</Text><Text style={styles.taskSummary}>{taskOpen.summary}</Text></View><StatusPill label={taskOpen.status} tone={toneForStatus(taskOpen.status)} /></View>
-              <View style={styles.stepsList}>{taskOpen.steps.map((step, index) => <View key={step.id} style={styles.stepRow}><View style={[styles.stepMarker, step.state === "done" && styles.stepDone, step.state === "active" && styles.stepActive]}>{step.state === "done" ? <MaterialIcons name="check" size={13} color={palette.ink} /> : <Text style={styles.stepNumber}>{index + 1}</Text>}</View><Text style={[styles.stepLabel, step.state === "active" && styles.stepLabelActive]}>{step.label}</Text><Text style={styles.stepState}>{step.state === "active" ? "NOW" : step.state.toUpperCase()}</Text></View>)}</View>
-              <View style={styles.taskModalActions}>
-                <Pressable accessibilityRole="button" onPress={() => changeTaskState(taskOpen.status === "Paused" ? "Working" : "Paused")} style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}><MaterialIcons name={taskOpen.status === "Paused" ? "play-arrow" : "pause"} size={18} color={palette.cloud} /><Text style={styles.secondaryButtonText}>{taskOpen.status === "Paused" ? "Resume" : "Pause"}</Text></Pressable>
-                <Pressable accessibilityRole="button" onPress={() => changeTaskState("Cancelled")} style={({ pressed }) => [styles.stopButton, pressed && styles.pressed]}><MaterialIcons name="stop" size={18} color={palette.coral} /><Text style={styles.stopButtonText}>Stop</Text></Pressable>
-              </View>
-            </> : null}
-          </Pressable>
-        </Pressable>
-      </Modal>
-
-      <Modal transparent visible={ready && !onboardingComplete} animationType="fade" onRequestClose={completeOnboarding}>
-        <View style={styles.welcomeShade}>
-          <View style={styles.welcomeCard}>
-            <View style={styles.welcomeMark}><View style={styles.markPath} /><MaterialIcons name="auto-awesome" size={21} color={palette.ink} /></View>
-            <Text style={styles.welcomeEyebrow}>WELCOME TO LUMA</Text>
-            <Text style={styles.welcomeTitle}>Create a Bot, give it real work, and stay in control.</Text>
-            <Text style={styles.welcomeDetail}>Start in the safe demo workroom. Luma keeps task states, approvals, and files visible. External browser control and always-on execution are not connected in this build, so it will never claim they happened.</Text>
-            <View style={styles.welcomeSteps}><View style={styles.welcomeStep}><Text style={styles.welcomeNumber}>1</Text><Text style={styles.welcomeStepText}>Choose Sable or create a specialized Bot.</Text></View><View style={styles.welcomeStep}><Text style={styles.welcomeNumber}>2</Text><Text style={styles.welcomeStepText}>Send a task and watch the plan become an auditable result.</Text></View><View style={styles.welcomeStep}><Text style={styles.welcomeNumber}>3</Text><Text style={styles.welcomeStepText}>Use Activity for approvals and Library for reusable work.</Text></View></View>
-            <Pressable accessibilityRole="button" onPress={completeOnboarding} style={({ pressed }) => [styles.welcomeButton, pressed && styles.pressed]}><Text style={styles.welcomeButtonText}>Open my workroom</Text><MaterialIcons name="arrow-forward" size={18} color={palette.ink} /></Pressable>
-          </View>
-        </View>
-      </Modal>
+      <Modal transparent visible={Boolean(taskOpen)} animationType="slide" onRequestClose={() => setTaskOpen(null)}><Pressable style={styles.modalShade} onPress={() => setTaskOpen(null)}><Pressable style={styles.sheet} onPress={(event) => event.stopPropagation()}>{taskOpen ? <><View style={styles.sheetGrabber} /><View style={styles.taskModalHead}><View style={styles.taskTitleWrap}><Text style={styles.taskModalTitle}>{taskOpen.title}</Text><Text style={styles.taskSummary}>{taskOpen.summary}</Text></View><StatusPill label={taskOpen.status} tone={toneForStatus(taskOpen.status)} /></View><View style={styles.stepsList}>{taskOpen.steps.map((step, index) => <View key={step.id} style={styles.stepRow}><View style={[styles.stepMarker, step.state === "done" && styles.stepDone, step.state === "active" && styles.stepActive]}>{step.state === "done" ? <MaterialIcons name="check" size={13} color="#FFFFFF" /> : <Text style={styles.stepNumber}>{index + 1}</Text>}</View><Text style={[styles.stepLabel, step.state === "active" && styles.stepLabelActive]}>{step.label}</Text></View>)}</View><View style={styles.taskModalActions}><Pressable accessibilityRole="button" onPress={() => changeTaskState(taskOpen.status === "Paused" ? "Working" : "Paused")} style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}><Text style={styles.secondaryButtonText}>{taskOpen.status === "Paused" ? "Resume" : "Pause"}</Text></Pressable><Pressable accessibilityRole="button" onPress={() => changeTaskState("Cancelled")} style={({ pressed }) => [styles.stopButton, pressed && styles.pressed]}><Text style={styles.stopButtonText}>Stop</Text></Pressable></View></> : null}</Pressable></Pressable></Modal>
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: palette.graphite },
-  topbar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingTop: 9, paddingBottom: 10, gap: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: palette.line },
-  topbarActions: { flexDirection: "row", gap: 8 },
-  botSelector: { flexDirection: "row", alignItems: "center", flex: 1, gap: 10, minWidth: 0 },
-  botSelectorCopy: { flex: 1 },
-  botSelectorName: { color: palette.cloud, fontSize: 15, lineHeight: 20, fontWeight: "800" },
-  botSelectorRole: { color: palette.mist, fontSize: 11, lineHeight: 16, marginTop: 1 },
-  scrollContent: { paddingHorizontal: 18, paddingTop: 15, paddingBottom: 22, gap: 18, maxWidth: 900, width: "100%", alignSelf: "center" },
-  chatHeading: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" },
-  chatHeadingTitle: { color: palette.cloud, fontSize: 22, fontWeight: "800", letterSpacing: -0.5 },
-  chatHeadingMeta: { color: palette.mist, fontSize: 12 },
-  botRail: { gap: 17, paddingVertical: 3, paddingRight: 8 },
-  botRailItem: { alignItems: "center", width: 57, gap: 6, paddingVertical: 3 },
-  botRailItemSelected: { opacity: 1 },
-  botRailName: { color: palette.mist, fontSize: 10, fontWeight: "700", maxWidth: 62 },
-  botRailNameSelected: { color: palette.cloud },
-  conversationHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12, marginTop: 2 },
-  conversationTitle: { color: palette.cloud, fontSize: 19, fontWeight: "800", letterSpacing: -0.35 },
-  conversationDetail: { color: palette.mist, fontSize: 12, marginTop: 3 },
-  approvalBanner: { flexDirection: "row", alignItems: "center", gap: 11, padding: 13, borderRadius: 15, backgroundColor: "#FFF8EA", borderWidth: 1, borderColor: "#F1D092" },
-  approvalIcon: { width: 34, height: 34, borderRadius: 12, backgroundColor: "#FFF0CB", justifyContent: "center", alignItems: "center" },
-  approvalCopy: { flex: 1 },
-  approvalTitle: { color: palette.cloud, fontSize: 13, fontWeight: "800" },
-  approvalDetail: { color: palette.amber, fontSize: 12, marginTop: 3 },
-  taskCard: { backgroundColor: palette.elevated, borderWidth: 1, borderColor: palette.line, borderRadius: 15, padding: 14, gap: 9 },
-  taskHead: { flexDirection: "row", gap: 10, alignItems: "flex-start", justifyContent: "space-between" },
-  taskTitleWrap: { flex: 1, minWidth: 0 },
-  taskTitle: { color: palette.cloud, fontSize: 15, fontWeight: "800", lineHeight: 20 },
-  taskSummary: { color: palette.mist, fontSize: 12, lineHeight: 18, marginTop: 4 },
-  taskFooter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 14 },
-  taskNext: { flex: 1, color: palette.mist, fontSize: 11, lineHeight: 15 },
-  taskOpen: { color: palette.cloud, fontSize: 11, fontWeight: "800" },
-  conversation: { gap: 10 },
-  messageRow: { flexDirection: "row", alignItems: "flex-end", gap: 8, paddingRight: 24 },
-  messageRowUser: { justifyContent: "flex-end", paddingRight: 0, paddingLeft: 48 },
-  messageBubble: { maxWidth: "100%", paddingHorizontal: 13, paddingVertical: 11, borderRadius: 18 },
-  botBubble: { backgroundColor: palette.elevated, borderBottomLeftRadius: 6 },
-  userBubble: { backgroundColor: palette.ink, borderBottomRightRadius: 6 },
-  messageAuthor: { color: palette.mist, fontSize: 10, letterSpacing: 0.4, fontWeight: "800", marginBottom: 4 },
-  userAuthor: { color: "#C9CAD0" },
-  messageText: { color: palette.cloud, fontSize: 14, lineHeight: 20 },
-  userText: { color: "#FFFFFF" },
-  messageTime: { color: palette.mist, fontSize: 10, marginTop: 7 },
-  userTime: { color: "#C9CAD0" },
-  activityRow: { flexDirection: "row", alignItems: "center", gap: 7, paddingVertical: 4 },
-  activityDot: { width: 5, height: 5, borderRadius: 4, backgroundColor: palette.mist },
-  activityText: { flex: 1, color: palette.mist, fontSize: 11, lineHeight: 16 },
-  activityTime: { color: "#687383", fontSize: 10 },
-  inlineAttachment: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 5, paddingHorizontal: 8, paddingVertical: 6, marginTop: 9, backgroundColor: "#FFFFFF", borderRadius: 9 },
-  inlineAttachmentText: { color: palette.mint, fontSize: 11, fontWeight: "700" },
-  capabilityLine: { flexDirection: "row", gap: 8, backgroundColor: "#1C233080", borderRadius: 14, padding: 12, alignItems: "flex-start" },
-  capabilityText: { flex: 1, color: palette.mist, fontSize: 11, lineHeight: 16 },
-  composerWrap: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: palette.line, backgroundColor: palette.graphite, paddingHorizontal: 14, paddingTop: 10, paddingBottom: 12 },
-  composer: { flexDirection: "row", alignItems: "flex-end", gap: 9, backgroundColor: palette.elevated, borderColor: palette.line, borderWidth: 1, borderRadius: 20, padding: 7, maxWidth: 900, width: "100%", alignSelf: "center" },
-  attachButton: { width: 36, height: 36, borderRadius: 13, alignItems: "center", justifyContent: "center" },
-  input: { flex: 1, minHeight: 38, maxHeight: 98, color: palette.cloud, fontSize: 14, lineHeight: 20, paddingTop: 8, paddingBottom: 7, paddingHorizontal: 0 },
-  sendButton: { width: 38, height: 38, borderRadius: 19, backgroundColor: palette.ink, alignItems: "center", justifyContent: "center" },
-  sendDisabled: { backgroundColor: palette.elevated },
-  pressed: { opacity: 0.75, transform: [{ scale: 0.98 }] },
-  modalShade: { flex: 1, justifyContent: "flex-end", backgroundColor: "#00000099" },
-  sheet: { backgroundColor: palette.graphite, borderTopLeftRadius: 27, borderTopRightRadius: 27, paddingHorizontal: 18, paddingBottom: 24, paddingTop: 9, maxHeight: "84%", borderTopWidth: 1, borderColor: palette.line },
-  sheetGrabber: { alignSelf: "center", height: 4, width: 38, borderRadius: 3, backgroundColor: "#526072", marginBottom: 18 },
-  sheetList: { gap: 9, paddingTop: 16 },
-  botChoice: { flexDirection: "row", alignItems: "center", gap: 11, backgroundColor: palette.graphite, borderColor: palette.line, borderWidth: 1, borderRadius: 15, padding: 11 },
-  botChoiceActive: { borderColor: palette.cloud, backgroundColor: palette.elevated },
-  botChoiceCopy: { flex: 1, minWidth: 0 },
-  botChoiceName: { color: palette.cloud, fontSize: 14, fontWeight: "800" },
-  botChoiceRole: { color: palette.mist, fontSize: 11, marginTop: 3 },
-  sheetLead: { color: palette.mist, fontSize: 13, lineHeight: 19, marginTop: 10, marginBottom: 18 },
-  fieldLabel: { color: palette.mint, fontSize: 10, fontWeight: "800", letterSpacing: 1.1, marginBottom: 6, marginTop: 12 },
-  field: { color: palette.cloud, backgroundColor: palette.elevated, borderWidth: 1, borderColor: palette.line, borderRadius: 14, paddingHorizontal: 13, paddingVertical: 11, fontSize: 14 },
-  goalField: { minHeight: 85, textAlignVertical: "top" },
-  primaryButton: { marginTop: 20, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: palette.mint, borderRadius: 15, paddingVertical: 14 },
-  primaryButtonText: { color: palette.ink, fontSize: 14, fontWeight: "900" },
-  taskModalHead: { flexDirection: "row", gap: 10, justifyContent: "space-between", alignItems: "flex-start" },
-  taskModalTitle: { color: palette.cloud, fontSize: 18, lineHeight: 24, fontWeight: "900" },
-  stepsList: { marginTop: 20, gap: 12 },
-  stepRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  stepMarker: { width: 24, height: 24, borderRadius: 8, alignItems: "center", justifyContent: "center", backgroundColor: palette.elevated, borderWidth: 1, borderColor: palette.line },
-  stepDone: { backgroundColor: palette.mint, borderColor: palette.mint },
-  stepActive: { borderColor: palette.mint },
-  stepNumber: { color: palette.mist, fontSize: 11, fontWeight: "800" },
-  stepLabel: { flex: 1, color: palette.mist, fontSize: 13 },
-  stepLabelActive: { color: palette.cloud, fontWeight: "700" },
-  stepState: { color: "#6E7888", fontSize: 9, fontWeight: "800", letterSpacing: 0.7 },
-  taskModalActions: { flexDirection: "row", gap: 10, marginTop: 22 },
-  secondaryButton: { flex: 1, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 6, paddingVertical: 13, borderRadius: 14, backgroundColor: palette.elevated, borderWidth: 1, borderColor: palette.line },
-  secondaryButtonText: { color: palette.cloud, fontWeight: "800", fontSize: 13 },
-  stopButton: { flex: 1, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 6, paddingVertical: 13, borderRadius: 14, backgroundColor: "#FF7B7B10", borderWidth: 1, borderColor: "#FF7B7B40" },
-  stopButtonText: { color: palette.coral, fontWeight: "800", fontSize: 13 },
-  welcomeShade: { flex: 1, backgroundColor: "#17181B80", alignItems: "center", justifyContent: "center", padding: 22 },
-  welcomeCard: { width: "100%", maxWidth: 430, backgroundColor: palette.graphite, borderRadius: 26, borderWidth: 1, borderColor: palette.line, padding: 21 },
-  welcomeMark: { width: 54, height: 54, borderRadius: 18, backgroundColor: palette.mint, alignItems: "center", justifyContent: "center", overflow: "hidden", marginBottom: 17 },
-  markPath: { position: "absolute", width: 30, height: 30, borderRadius: 11, borderWidth: 3, borderColor: "#0B0D1133", transform: [{ rotate: "45deg" }] },
-  welcomeEyebrow: { color: palette.mint, fontSize: 10, fontWeight: "900", letterSpacing: 1.3, marginBottom: 7 },
-  welcomeTitle: { color: palette.cloud, fontSize: 25, lineHeight: 31, letterSpacing: -0.8, fontWeight: "900" },
-  welcomeDetail: { color: palette.mist, fontSize: 13, lineHeight: 19, marginTop: 11 },
-  welcomeSteps: { gap: 10, marginTop: 17 },
-  welcomeStep: { flexDirection: "row", alignItems: "flex-start", gap: 9 },
-  welcomeNumber: { width: 20, height: 20, textAlign: "center", paddingTop: 2, color: palette.ink, backgroundColor: palette.mint, borderRadius: 7, fontSize: 11, fontWeight: "900" },
-  welcomeStepText: { flex: 1, color: palette.cloud, fontSize: 12, lineHeight: 18 },
-  welcomeButton: { marginTop: 20, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, backgroundColor: palette.mint, paddingVertical: 14, borderRadius: 15 },
-  welcomeButtonText: { color: palette.ink, fontSize: 14, fontWeight: "900" },
+  flex: { flex: 1, backgroundColor: palette.graphite }, topbar: { minHeight: 60, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, gap: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: palette.line }, topbarActions: { flexDirection: "row", gap: 8 }, brand: { flexDirection: "row", alignItems: "center", gap: 9 }, brandMark: { width: 30, height: 30, borderRadius: 11, backgroundColor: palette.lavender, alignItems: "center", justifyContent: "center" }, brandName: { color: palette.cloud, fontSize: 17, fontWeight: "900", letterSpacing: -0.4 }, botSelector: { flexDirection: "row", alignItems: "center", flex: 1, gap: 9, minWidth: 0 }, botSelectorCopy: { flex: 1 }, botSelectorName: { color: palette.cloud, fontSize: 15, fontWeight: "800" }, botSelectorRole: { color: palette.mist, fontSize: 11, marginTop: 2 }, loading: { flex: 1, alignItems: "center", justifyContent: "center" }, loadingText: { color: palette.mist, fontSize: 13 }, emptyWorkspace: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 30, paddingBottom: 58 }, orbit: { width: 186, height: 186, alignItems: "center", justifyContent: "center", marginBottom: 25 }, orbitCore: { width: 72, height: 72, borderRadius: 28, backgroundColor: palette.lavender, alignItems: "center", justifyContent: "center", shadowColor: palette.lavender, shadowOpacity: 0.22, shadowRadius: 22, shadowOffset: { width: 0, height: 8 } }, orbitDot: { position: "absolute", width: 24, height: 24, borderRadius: 9, backgroundColor: "#18B982", top: 10, left: 28, transform: [{ rotate: "18deg" }] }, orbitDotTwo: { backgroundColor: "#DF8D19", width: 19, height: 19, top: 130, left: 145, borderRadius: 10 }, orbitDotThree: { backgroundColor: "#198EDE", width: 27, height: 27, top: 116, left: 13, borderRadius: 12 }, emptyTitle: { color: palette.cloud, fontSize: 27, fontWeight: "900", letterSpacing: -0.8, textAlign: "center" }, emptyDetail: { color: palette.mist, fontSize: 14, lineHeight: 21, textAlign: "center", maxWidth: 335, marginTop: 10 }, createFirstButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: palette.ink, borderRadius: 18, paddingHorizontal: 20, paddingVertical: 14, marginTop: 23, minWidth: 178 }, createFirstText: { color: "#FFFFFF", fontSize: 14, fontWeight: "900" }, emptyFootnote: { color: palette.mist, fontSize: 11, lineHeight: 16, textAlign: "center", maxWidth: 300, marginTop: 15 }, scrollContent: { paddingHorizontal: 18, paddingTop: 15, paddingBottom: 20, gap: 18, maxWidth: 900, width: "100%", alignSelf: "center" }, botRail: { gap: 17, paddingRight: 7 }, botRailItem: { width: 56, alignItems: "center", gap: 6 }, botRailName: { color: palette.mist, fontSize: 10, fontWeight: "700", maxWidth: 60 }, botRailNameSelected: { color: palette.cloud }, conversationHead: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 14 }, conversationTitle: { color: palette.cloud, fontSize: 21, fontWeight: "900", letterSpacing: -0.5 }, conversationDetail: { color: palette.mist, fontSize: 12, lineHeight: 17, marginTop: 4, maxWidth: 560 }, approvalBanner: { flexDirection: "row", alignItems: "center", gap: 10, padding: 13, borderRadius: 15, backgroundColor: "#FFF8EA", borderWidth: 1, borderColor: "#F1D092" }, approvalCopy: { flex: 1 }, approvalTitle: { color: palette.cloud, fontSize: 13, fontWeight: "800" }, approvalDetail: { color: palette.amber, fontSize: 11, marginTop: 3 }, taskCard: { backgroundColor: palette.elevated, borderWidth: 1, borderColor: palette.line, borderRadius: 15, padding: 14, gap: 9 }, taskHead: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }, taskTitleWrap: { flex: 1, minWidth: 0 }, taskTitle: { color: palette.cloud, fontSize: 14, fontWeight: "800" }, taskSummary: { color: palette.mist, fontSize: 12, lineHeight: 17, marginTop: 4 }, taskFooter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }, taskNext: { flex: 1, color: palette.mist, fontSize: 11, lineHeight: 15 }, taskOpen: { color: palette.cloud, fontSize: 11, fontWeight: "800" }, conversation: { gap: 10 }, messageRow: { flexDirection: "row", alignItems: "flex-end", gap: 8, paddingRight: 28 }, messageRowUser: { justifyContent: "flex-end", paddingRight: 0, paddingLeft: 44 }, messageBubble: { maxWidth: "100%", borderRadius: 18, paddingHorizontal: 13, paddingVertical: 11 }, botBubble: { backgroundColor: palette.elevated, borderBottomLeftRadius: 5 }, userBubble: { backgroundColor: palette.ink, borderBottomRightRadius: 5 }, messageText: { color: palette.cloud, fontSize: 14, lineHeight: 20 }, userText: { color: "#FFFFFF" }, messageTime: { color: palette.mist, fontSize: 10, marginTop: 7 }, userTime: { color: "#D7D7DA" }, activityRow: { flexDirection: "row", alignItems: "center", gap: 7, paddingVertical: 3 }, activityDot: { width: 5, height: 5, borderRadius: 4, backgroundColor: palette.mist }, activityText: { flex: 1, color: palette.mist, fontSize: 11, lineHeight: 16 }, inlineAttachment: { flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start", marginTop: 8, backgroundColor: "#FFFFFF", borderRadius: 9, paddingHorizontal: 8, paddingVertical: 6 }, inlineAttachmentText: { color: palette.mint, fontSize: 11, fontWeight: "700" }, composerWrap: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: palette.line, backgroundColor: palette.graphite, paddingHorizontal: 14, paddingTop: 10, paddingBottom: 12 }, composer: { flexDirection: "row", alignItems: "flex-end", gap: 8, padding: 7, borderRadius: 20, borderWidth: 1, borderColor: palette.line, backgroundColor: palette.elevated, maxWidth: 900, width: "100%", alignSelf: "center" }, attachButton: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" }, input: { flex: 1, minHeight: 38, maxHeight: 98, color: palette.cloud, fontSize: 14, lineHeight: 20, paddingTop: 8, paddingBottom: 7 }, sendButton: { width: 38, height: 38, borderRadius: 19, backgroundColor: palette.ink, alignItems: "center", justifyContent: "center" }, sendDisabled: { backgroundColor: "#C8C9CE" }, pressed: { opacity: 0.74, transform: [{ scale: 0.98 }] }, modalShade: { flex: 1, justifyContent: "flex-end", backgroundColor: "#17181B66" }, sheet: { backgroundColor: palette.graphite, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 18, paddingBottom: 28, paddingTop: 9, borderTopWidth: 1, borderColor: palette.line, maxHeight: "88%" }, sheetGrabber: { width: 38, height: 4, borderRadius: 3, backgroundColor: "#C4C5CB", alignSelf: "center", marginBottom: 17 }, sheetList: { gap: 2, paddingTop: 14 }, botChoice: { flexDirection: "row", alignItems: "center", gap: 11, paddingVertical: 11, paddingHorizontal: 9, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: palette.line }, botChoiceActive: { backgroundColor: palette.elevated, borderRadius: 14, borderBottomWidth: 0 }, botChoiceCopy: { flex: 1, minWidth: 0 }, botChoiceName: { color: palette.cloud, fontSize: 14, fontWeight: "800" }, botChoiceRole: { color: palette.mist, fontSize: 11, marginTop: 3 }, setupProgress: { flexDirection: "row", gap: 5, marginBottom: 18 }, setupProgressDot: { flex: 1, height: 4, borderRadius: 3, backgroundColor: palette.line }, setupProgressDotActive: { backgroundColor: palette.lavender }, setupEyebrow: { color: palette.mist, fontSize: 10, fontWeight: "900", letterSpacing: 1.1, marginBottom: 7 }, setupTitle: { color: palette.cloud, fontSize: 24, lineHeight: 30, fontWeight: "900", letterSpacing: -0.65 }, sheetLead: { color: palette.mist, fontSize: 13, lineHeight: 19, marginTop: 9, marginBottom: 17 }, fieldLabel: { color: palette.mist, fontSize: 10, letterSpacing: 1.1, fontWeight: "900", marginTop: 12, marginBottom: 6 }, field: { color: palette.cloud, backgroundColor: palette.elevated, borderWidth: 1, borderColor: palette.line, borderRadius: 14, paddingHorizontal: 13, paddingVertical: 11, fontSize: 14 }, detailField: { minHeight: 86, textAlignVertical: "top" }, setupActions: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 22 }, backSpacer: { flex: 1 }, backButton: { flex: 1, paddingVertical: 14, alignItems: "center", borderRadius: 15, borderWidth: 1, borderColor: palette.line, backgroundColor: palette.graphite }, backButtonText: { color: palette.cloud, fontSize: 14, fontWeight: "800" }, nextButton: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, paddingVertical: 14, borderRadius: 15, backgroundColor: palette.ink }, nextButtonText: { color: "#FFFFFF", fontSize: 14, fontWeight: "900" }, taskModalHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }, taskModalTitle: { color: palette.cloud, fontSize: 18, lineHeight: 24, fontWeight: "900" }, stepsList: { marginTop: 20, gap: 12 }, stepRow: { flexDirection: "row", alignItems: "center", gap: 10 }, stepMarker: { width: 24, height: 24, borderRadius: 8, borderWidth: 1, borderColor: palette.line, alignItems: "center", justifyContent: "center", backgroundColor: palette.elevated }, stepDone: { backgroundColor: palette.mint, borderColor: palette.mint }, stepActive: { borderColor: palette.lavender }, stepNumber: { color: palette.mist, fontSize: 11, fontWeight: "800" }, stepLabel: { flex: 1, color: palette.mist, fontSize: 13 }, stepLabelActive: { color: palette.cloud, fontWeight: "800" }, taskModalActions: { flexDirection: "row", gap: 10, marginTop: 22 }, secondaryButton: { flex: 1, alignItems: "center", paddingVertical: 13, borderRadius: 14, backgroundColor: palette.elevated, borderWidth: 1, borderColor: palette.line }, secondaryButtonText: { color: palette.cloud, fontSize: 13, fontWeight: "800" }, stopButton: { flex: 1, alignItems: "center", paddingVertical: 13, borderRadius: 14, backgroundColor: "#FFF1F1", borderWidth: 1, borderColor: "#F1BDBD" }, stopButtonText: { color: palette.coral, fontSize: 13, fontWeight: "800" },
 });
