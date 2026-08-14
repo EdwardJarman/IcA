@@ -153,14 +153,12 @@ export default function WorkroomScreen() {
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          <View style={styles.heroLine}>
-            <View>
-              <Text style={styles.eyebrow}>YOUR WORKROOM</Text>
-              <Text style={styles.heroTitle}>Keep the work moving.</Text>
-            </View>
-            <StatusPill label={selectedBot.status === "Working" ? "LIVE" : "READY"} tone={selectedBot.status === "Working" ? "mint" : "muted"} />
-          </View>
-          <Text style={styles.heroDetail}>Message {selectedBot.name} like a teammate. Luma keeps the task state visible and pauses for meaningful decisions.</Text>
+          <View style={styles.chatHeading}><Text style={styles.chatHeadingTitle}>Bots</Text><Text style={styles.chatHeadingMeta}>{bots.filter((bot) => bot.status === "Working").length ? `${bots.filter((bot) => bot.status === "Working").length} working` : "All caught up"}</Text></View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.botRail}>
+            {bots.slice(0, 8).map((bot) => <Pressable key={bot.id} accessibilityRole="button" accessibilityLabel={`Open ${bot.name}`} onPress={() => selectBot(bot.id)} style={({ pressed }) => [styles.botRailItem, bot.id === selectedBot.id && styles.botRailItemSelected, pressed && styles.pressed]}><Avatar label={bot.avatar} color={bot.color} size={46} /><Text numberOfLines={1} style={[styles.botRailName, bot.id === selectedBot.id && styles.botRailNameSelected]}>{bot.name}</Text></Pressable>)}
+          </ScrollView>
+
+          <View style={styles.conversationHead}><View><Text style={styles.conversationTitle}>{selectedBot.name}</Text><Text style={styles.conversationDetail}>{selectedBot.role} · {selectedBot.status}</Text></View><StatusPill label={selectedBot.status === "Working" ? "Working" : "Ready"} tone={selectedBot.status === "Working" ? "mint" : "muted"} /></View>
 
           {pendingApproval ? (
             <Pressable accessibilityRole="button" onPress={() => router.navigate("/activity" as never)} style={({ pressed }) => [styles.approvalBanner, pressed && styles.pressed]}>
@@ -182,17 +180,11 @@ export default function WorkroomScreen() {
                 </View>
                 <StatusPill label={task.status} tone={toneForStatus(task.status)} />
               </View>
-              <View style={styles.progressTrack}>
-                {task.steps.map((step) => <View key={step.id} style={[styles.progressSegment, step.state === "done" && styles.progressDone, step.state === "active" && styles.progressActive]} />)}
-              </View>
-              <View style={styles.taskFooter}>
-                <Text style={styles.taskNext}>{task.nextAction}</Text>
-                <Text style={styles.taskOpen}>OPEN TASK</Text>
-              </View>
+              <View style={styles.taskFooter}><Text style={styles.taskNext}>{task.nextAction}</Text><Text style={styles.taskOpen}>Details</Text></View>
             </Pressable>
           ))}
 
-          <SectionTitle eyebrow="Conversation" title="Work with {selectedBot.name}" />
+          <SectionTitle eyebrow="Conversation" title={`Work with ${selectedBot.name}`} />
           <View style={styles.conversation}>
             {visibleMessages.map((message) => {
               const isUser = message.author === "user";
@@ -212,10 +204,6 @@ export default function WorkroomScreen() {
                 </View>
               );
             })}
-          </View>
-          <View style={styles.capabilityLine}>
-            <MaterialIcons name="info-outline" size={16} color={palette.mist} />
-            <Text style={styles.capabilityText}>Local workroom state is saved on this device. Model, browser, and background capabilities are shown as they become available.</Text>
           </View>
         </ScrollView>
 
@@ -300,74 +288,77 @@ export default function WorkroomScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: palette.ink },
-  topbar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingTop: 9, paddingBottom: 8, gap: 10 },
+  flex: { flex: 1, backgroundColor: palette.graphite },
+  topbar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingTop: 9, paddingBottom: 10, gap: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: palette.line },
   topbarActions: { flexDirection: "row", gap: 8 },
   botSelector: { flexDirection: "row", alignItems: "center", flex: 1, gap: 10, minWidth: 0 },
   botSelectorCopy: { flex: 1 },
   botSelectorName: { color: palette.cloud, fontSize: 15, lineHeight: 20, fontWeight: "800" },
   botSelectorRole: { color: palette.mist, fontSize: 11, lineHeight: 16, marginTop: 1 },
-  scrollContent: { paddingHorizontal: 18, paddingTop: 16, paddingBottom: 22, gap: 18 },
-  eyebrow: { color: palette.mint, fontSize: 10, fontWeight: "800", letterSpacing: 1.4, marginBottom: 5 },
-  heroLine: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 },
-  heroTitle: { color: palette.cloud, fontSize: 28, fontWeight: "800", letterSpacing: -0.9, lineHeight: 34 },
-  heroDetail: { color: palette.mist, fontSize: 14, lineHeight: 20, marginTop: -9, maxWidth: 510 },
-  approvalBanner: { flexDirection: "row", alignItems: "center", gap: 11, padding: 13, borderRadius: 18, backgroundColor: "#F6C65B12", borderWidth: 1, borderColor: "#F6C65B42" },
-  approvalIcon: { width: 34, height: 34, borderRadius: 12, backgroundColor: "#F6C65B18", justifyContent: "center", alignItems: "center" },
+  scrollContent: { paddingHorizontal: 18, paddingTop: 15, paddingBottom: 22, gap: 18, maxWidth: 900, width: "100%", alignSelf: "center" },
+  chatHeading: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" },
+  chatHeadingTitle: { color: palette.cloud, fontSize: 22, fontWeight: "800", letterSpacing: -0.5 },
+  chatHeadingMeta: { color: palette.mist, fontSize: 12 },
+  botRail: { gap: 17, paddingVertical: 3, paddingRight: 8 },
+  botRailItem: { alignItems: "center", width: 57, gap: 6, paddingVertical: 3 },
+  botRailItemSelected: { opacity: 1 },
+  botRailName: { color: palette.mist, fontSize: 10, fontWeight: "700", maxWidth: 62 },
+  botRailNameSelected: { color: palette.cloud },
+  conversationHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12, marginTop: 2 },
+  conversationTitle: { color: palette.cloud, fontSize: 19, fontWeight: "800", letterSpacing: -0.35 },
+  conversationDetail: { color: palette.mist, fontSize: 12, marginTop: 3 },
+  approvalBanner: { flexDirection: "row", alignItems: "center", gap: 11, padding: 13, borderRadius: 15, backgroundColor: "#FFF8EA", borderWidth: 1, borderColor: "#F1D092" },
+  approvalIcon: { width: 34, height: 34, borderRadius: 12, backgroundColor: "#FFF0CB", justifyContent: "center", alignItems: "center" },
   approvalCopy: { flex: 1 },
   approvalTitle: { color: palette.cloud, fontSize: 13, fontWeight: "800" },
   approvalDetail: { color: palette.amber, fontSize: 12, marginTop: 3 },
-  taskCard: { backgroundColor: palette.graphite, borderWidth: 1, borderColor: palette.line, borderRadius: 21, padding: 15, gap: 12 },
+  taskCard: { backgroundColor: palette.elevated, borderWidth: 1, borderColor: palette.line, borderRadius: 15, padding: 14, gap: 9 },
   taskHead: { flexDirection: "row", gap: 10, alignItems: "flex-start", justifyContent: "space-between" },
   taskTitleWrap: { flex: 1, minWidth: 0 },
   taskTitle: { color: palette.cloud, fontSize: 15, fontWeight: "800", lineHeight: 20 },
   taskSummary: { color: palette.mist, fontSize: 12, lineHeight: 18, marginTop: 4 },
-  progressTrack: { flexDirection: "row", gap: 5 },
-  progressSegment: { flex: 1, height: 4, borderRadius: 3, backgroundColor: palette.line },
-  progressDone: { backgroundColor: palette.mint },
-  progressActive: { backgroundColor: "#77F3C477" },
   taskFooter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 14 },
   taskNext: { flex: 1, color: palette.mist, fontSize: 11, lineHeight: 15 },
-  taskOpen: { color: palette.mint, fontSize: 10, fontWeight: "800", letterSpacing: 1 },
-  conversation: { gap: 12 },
+  taskOpen: { color: palette.cloud, fontSize: 11, fontWeight: "800" },
+  conversation: { gap: 10 },
   messageRow: { flexDirection: "row", alignItems: "flex-end", gap: 8, paddingRight: 24 },
   messageRowUser: { justifyContent: "flex-end", paddingRight: 0, paddingLeft: 48 },
   messageBubble: { maxWidth: "100%", paddingHorizontal: 13, paddingVertical: 11, borderRadius: 18 },
-  botBubble: { backgroundColor: palette.graphite, borderWidth: 1, borderColor: palette.line, borderBottomLeftRadius: 6 },
-  userBubble: { backgroundColor: "#77F3C4", borderBottomRightRadius: 6 },
-  messageAuthor: { color: palette.mint, fontSize: 10, letterSpacing: 0.8, fontWeight: "800", marginBottom: 4 },
-  userAuthor: { color: "#0F4D38" },
+  botBubble: { backgroundColor: palette.elevated, borderBottomLeftRadius: 6 },
+  userBubble: { backgroundColor: palette.ink, borderBottomRightRadius: 6 },
+  messageAuthor: { color: palette.mist, fontSize: 10, letterSpacing: 0.4, fontWeight: "800", marginBottom: 4 },
+  userAuthor: { color: "#C9CAD0" },
   messageText: { color: palette.cloud, fontSize: 14, lineHeight: 20 },
-  userText: { color: palette.ink },
-  messageTime: { color: "#697484", fontSize: 10, marginTop: 7 },
-  userTime: { color: "#28634D" },
+  userText: { color: "#FFFFFF" },
+  messageTime: { color: palette.mist, fontSize: 10, marginTop: 7 },
+  userTime: { color: "#C9CAD0" },
   activityRow: { flexDirection: "row", alignItems: "center", gap: 7, paddingVertical: 4 },
-  activityDot: { width: 6, height: 6, borderRadius: 4, backgroundColor: palette.mint },
+  activityDot: { width: 5, height: 5, borderRadius: 4, backgroundColor: palette.mist },
   activityText: { flex: 1, color: palette.mist, fontSize: 11, lineHeight: 16 },
   activityTime: { color: "#687383", fontSize: 10 },
-  inlineAttachment: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 5, paddingHorizontal: 8, paddingVertical: 6, marginTop: 9, backgroundColor: "#77F3C412", borderRadius: 9 },
+  inlineAttachment: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 5, paddingHorizontal: 8, paddingVertical: 6, marginTop: 9, backgroundColor: "#FFFFFF", borderRadius: 9 },
   inlineAttachmentText: { color: palette.mint, fontSize: 11, fontWeight: "700" },
   capabilityLine: { flexDirection: "row", gap: 8, backgroundColor: "#1C233080", borderRadius: 14, padding: 12, alignItems: "flex-start" },
   capabilityText: { flex: 1, color: palette.mist, fontSize: 11, lineHeight: 16 },
-  composerWrap: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: palette.line, backgroundColor: palette.ink, paddingHorizontal: 14, paddingTop: 10, paddingBottom: 12 },
-  composer: { flexDirection: "row", alignItems: "flex-end", gap: 9, backgroundColor: palette.graphite, borderColor: palette.line, borderWidth: 1, borderRadius: 20, padding: 7 },
+  composerWrap: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: palette.line, backgroundColor: palette.graphite, paddingHorizontal: 14, paddingTop: 10, paddingBottom: 12 },
+  composer: { flexDirection: "row", alignItems: "flex-end", gap: 9, backgroundColor: palette.elevated, borderColor: palette.line, borderWidth: 1, borderRadius: 20, padding: 7, maxWidth: 900, width: "100%", alignSelf: "center" },
   attachButton: { width: 36, height: 36, borderRadius: 13, alignItems: "center", justifyContent: "center" },
   input: { flex: 1, minHeight: 38, maxHeight: 98, color: palette.cloud, fontSize: 14, lineHeight: 20, paddingTop: 8, paddingBottom: 7, paddingHorizontal: 0 },
-  sendButton: { width: 38, height: 38, borderRadius: 13, backgroundColor: palette.mint, alignItems: "center", justifyContent: "center" },
+  sendButton: { width: 38, height: 38, borderRadius: 19, backgroundColor: palette.ink, alignItems: "center", justifyContent: "center" },
   sendDisabled: { backgroundColor: palette.elevated },
   pressed: { opacity: 0.75, transform: [{ scale: 0.98 }] },
   modalShade: { flex: 1, justifyContent: "flex-end", backgroundColor: "#00000099" },
-  sheet: { backgroundColor: "#121720", borderTopLeftRadius: 27, borderTopRightRadius: 27, paddingHorizontal: 18, paddingBottom: 24, paddingTop: 9, maxHeight: "84%", borderTopWidth: 1, borderColor: palette.line },
+  sheet: { backgroundColor: palette.graphite, borderTopLeftRadius: 27, borderTopRightRadius: 27, paddingHorizontal: 18, paddingBottom: 24, paddingTop: 9, maxHeight: "84%", borderTopWidth: 1, borderColor: palette.line },
   sheetGrabber: { alignSelf: "center", height: 4, width: 38, borderRadius: 3, backgroundColor: "#526072", marginBottom: 18 },
   sheetList: { gap: 9, paddingTop: 16 },
-  botChoice: { flexDirection: "row", alignItems: "center", gap: 11, backgroundColor: palette.graphite, borderColor: palette.line, borderWidth: 1, borderRadius: 17, padding: 11 },
-  botChoiceActive: { borderColor: "#77F3C466", backgroundColor: "#77F3C410" },
+  botChoice: { flexDirection: "row", alignItems: "center", gap: 11, backgroundColor: palette.graphite, borderColor: palette.line, borderWidth: 1, borderRadius: 15, padding: 11 },
+  botChoiceActive: { borderColor: palette.cloud, backgroundColor: palette.elevated },
   botChoiceCopy: { flex: 1, minWidth: 0 },
   botChoiceName: { color: palette.cloud, fontSize: 14, fontWeight: "800" },
   botChoiceRole: { color: palette.mist, fontSize: 11, marginTop: 3 },
   sheetLead: { color: palette.mist, fontSize: 13, lineHeight: 19, marginTop: 10, marginBottom: 18 },
   fieldLabel: { color: palette.mint, fontSize: 10, fontWeight: "800", letterSpacing: 1.1, marginBottom: 6, marginTop: 12 },
-  field: { color: palette.cloud, backgroundColor: palette.graphite, borderWidth: 1, borderColor: palette.line, borderRadius: 14, paddingHorizontal: 13, paddingVertical: 11, fontSize: 14 },
+  field: { color: palette.cloud, backgroundColor: palette.elevated, borderWidth: 1, borderColor: palette.line, borderRadius: 14, paddingHorizontal: 13, paddingVertical: 11, fontSize: 14 },
   goalField: { minHeight: 85, textAlignVertical: "top" },
   primaryButton: { marginTop: 20, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: palette.mint, borderRadius: 15, paddingVertical: 14 },
   primaryButtonText: { color: palette.ink, fontSize: 14, fontWeight: "900" },
@@ -387,8 +378,8 @@ const styles = StyleSheet.create({
   secondaryButtonText: { color: palette.cloud, fontWeight: "800", fontSize: 13 },
   stopButton: { flex: 1, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 6, paddingVertical: 13, borderRadius: 14, backgroundColor: "#FF7B7B10", borderWidth: 1, borderColor: "#FF7B7B40" },
   stopButtonText: { color: palette.coral, fontWeight: "800", fontSize: 13 },
-  welcomeShade: { flex: 1, backgroundColor: "#06070BD9", alignItems: "center", justifyContent: "center", padding: 22 },
-  welcomeCard: { width: "100%", maxWidth: 430, backgroundColor: "#121720", borderRadius: 26, borderWidth: 1, borderColor: "#77F3C450", padding: 21 },
+  welcomeShade: { flex: 1, backgroundColor: "#17181B80", alignItems: "center", justifyContent: "center", padding: 22 },
+  welcomeCard: { width: "100%", maxWidth: 430, backgroundColor: palette.graphite, borderRadius: 26, borderWidth: 1, borderColor: palette.line, padding: 21 },
   welcomeMark: { width: 54, height: 54, borderRadius: 18, backgroundColor: palette.mint, alignItems: "center", justifyContent: "center", overflow: "hidden", marginBottom: 17 },
   markPath: { position: "absolute", width: 30, height: 30, borderRadius: 11, borderWidth: 3, borderColor: "#0B0D1133", transform: [{ rotate: "45deg" }] },
   welcomeEyebrow: { color: palette.mint, fontSize: 10, fontWeight: "900", letterSpacing: 1.3, marginBottom: 7 },

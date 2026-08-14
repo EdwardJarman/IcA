@@ -80,8 +80,7 @@ export default function LibraryScreen() {
   return (
     <ScreenContainer containerClassName="bg-background" className="flex-1" edges={["top", "left", "right"]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        <View style={styles.head}><View><Text style={styles.eyebrow}>WORKROOM LIBRARY</Text><Text style={styles.title}>Make good work repeatable.</Text></View><IconButton icon={section === "Skills" || section === "Routines" ? "add" : "tune"} label={section === "Skills" ? "Create skill" : section === "Routines" ? "Create routine" : "Library options"} onPress={() => section === "Skills" ? setSkillOpen(true) : section === "Routines" ? setRoutineOpen(true) : Alert.alert("Library controls", "This area keeps process, files, privacy choices, and schedule state visible. Select a card to review its details.")} tone="mint" /></View>
-        <Text style={styles.lead}>Save trustworthy methods, run them only when ready, and keep every file scope and approval boundary visible.</Text>
+        <View style={styles.head}><View><Text style={styles.title}>Library</Text><Text style={styles.lead}>Reusable work, files, and the controls that keep each Bot clear.</Text></View><IconButton icon={section === "Skills" || section === "Routines" ? "add" : "tune"} label={section === "Skills" ? "Create skill" : section === "Routines" ? "Create routine" : "Library options"} onPress={() => section === "Skills" ? setSkillOpen(true) : section === "Routines" ? setRoutineOpen(true) : Alert.alert("Library controls", "This area keeps process, files, privacy choices, and schedule state visible. Select a card to review its details.")} tone="mint" /></View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.segmented}>
           {tabs.map((tab) => <Pressable key={tab} accessibilityRole="tab" accessibilityState={{ selected: section === tab }} onPress={() => setSection(tab)} style={({ pressed }) => [styles.segment, section === tab && styles.segmentActive, pressed && styles.pressed]}><Text style={[styles.segmentText, section === tab && styles.segmentTextActive]}>{tab}</Text></Pressable>)}
@@ -109,22 +108,22 @@ function SkillsPanel({ skills, onCreate }: { skills: Skill[]; onCreate: () => vo
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: 18, paddingTop: 17, paddingBottom: 30, gap: 18 },
+  content: { paddingHorizontal: 18, paddingTop: 18, paddingBottom: 30, gap: 18, maxWidth: 780, width: "100%", alignSelf: "center" },
   head: { flexDirection: "row", justifyContent: "space-between", gap: 14 },
-  eyebrow: { color: palette.mint, fontSize: 10, fontWeight: "800", letterSpacing: 1.3, marginBottom: 5 },
-  title: { color: palette.cloud, fontSize: 28, fontWeight: "900", letterSpacing: -0.9, lineHeight: 34, maxWidth: 280 },
-  lead: { color: palette.mist, fontSize: 14, lineHeight: 20, marginTop: -10 },
+  eyebrow: { color: palette.mist, fontSize: 10, fontWeight: "800", letterSpacing: 1.2, marginBottom: 5 },
+  title: { color: palette.cloud, fontSize: 24, fontWeight: "800", letterSpacing: -0.6, lineHeight: 30, maxWidth: 280 },
+  lead: { color: palette.mist, fontSize: 13, lineHeight: 19, marginTop: 5, maxWidth: 330 },
   segmented: { gap: 8, paddingVertical: 1 },
   segment: { paddingHorizontal: 13, paddingVertical: 9, borderRadius: 13, backgroundColor: palette.elevated, borderWidth: 1, borderColor: palette.line },
-  segmentActive: { borderColor: "#77F3C466", backgroundColor: "#77F3C412" },
+  segmentActive: { borderColor: palette.cloud, backgroundColor: palette.graphite },
   segmentText: { color: palette.mist, fontSize: 12, fontWeight: "800" },
   segmentTextActive: { color: palette.mint },
   panel: { gap: 13 },
   panelLead: { color: palette.mist, fontSize: 13, lineHeight: 19, marginTop: -7 },
   cards: { gap: 9 },
-  skillCard: { backgroundColor: palette.graphite, borderRadius: 19, borderWidth: 1, borderColor: palette.line, padding: 14, gap: 9 },
+  skillCard: { backgroundColor: palette.elevated, borderRadius: 15, borderWidth: 1, borderColor: palette.line, padding: 14, gap: 9 },
   skillHead: { flexDirection: "row", gap: 10, alignItems: "flex-start", justifyContent: "space-between" },
-  routineCard: { backgroundColor: palette.graphite, borderRadius: 19, borderWidth: 1, borderColor: palette.line, padding: 14, gap: 9 },
+  routineCard: { backgroundColor: palette.elevated, borderRadius: 15, borderWidth: 1, borderColor: palette.line, padding: 14, gap: 9 },
   routineHead: { flexDirection: "row", gap: 10, alignItems: "flex-start", justifyContent: "space-between" },
   routineTitleWrap: { flex: 1, minWidth: 0 },
   cardTitle: { color: palette.cloud, fontSize: 14, lineHeight: 19, fontWeight: "800" },
@@ -136,18 +135,18 @@ const styles = StyleSheet.create({
   nextRun: { flex: 1, color: palette.mist, fontSize: 10, fontWeight: "800", letterSpacing: 0.5 },
   smallAction: { borderRadius: 10, paddingHorizontal: 11, paddingVertical: 7, backgroundColor: palette.elevated, borderWidth: 1, borderColor: palette.line },
   smallActionText: { color: palette.cloud, fontSize: 11, fontWeight: "800" },
-  infoLine: { flexDirection: "row", alignItems: "flex-start", gap: 8, padding: 11, borderRadius: 14, backgroundColor: "#1C233080", marginTop: 2 },
+  infoLine: { flexDirection: "row", alignItems: "flex-start", gap: 8, padding: 11, borderRadius: 14, backgroundColor: palette.elevated, marginTop: 2 },
   infoText: { flex: 1, color: palette.mist, fontSize: 11, lineHeight: 16 },
-  fileCard: { flexDirection: "row", alignItems: "center", gap: 11, padding: 12, borderRadius: 18, backgroundColor: palette.graphite, borderWidth: 1, borderColor: palette.line },
+  fileCard: { flexDirection: "row", alignItems: "center", gap: 11, padding: 12, borderRadius: 15, backgroundColor: palette.elevated, borderWidth: 1, borderColor: palette.line },
   fileIcon: { width: 37, height: 37, borderRadius: 13, backgroundColor: "#77F3C414", alignItems: "center", justifyContent: "center" },
   fileCopy: { flex: 1, minWidth: 0 },
   fileScope: { color: palette.mint, fontSize: 10, fontWeight: "700", marginTop: 4 },
-  searchInput: { flexDirection: "row", alignItems: "center", gap: 9, backgroundColor: palette.graphite, borderWidth: 1, borderColor: palette.line, borderRadius: 15, paddingHorizontal: 12 },
+  searchInput: { flexDirection: "row", alignItems: "center", gap: 9, backgroundColor: palette.elevated, borderWidth: 1, borderColor: palette.line, borderRadius: 15, paddingHorizontal: 12 },
   searchText: { flex: 1, color: palette.cloud, fontSize: 14, height: 46 },
-  searchResult: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: palette.graphite, borderWidth: 1, borderColor: palette.line, borderRadius: 16, padding: 12 },
+  searchResult: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: palette.elevated, borderWidth: 1, borderColor: palette.line, borderRadius: 15, padding: 12 },
   resultType: { color: palette.mint, fontSize: 9, fontWeight: "900", letterSpacing: 0.8, width: 48 },
   resultCopy: { flex: 1, minWidth: 0 },
-  privacyCard: { flexDirection: "row", gap: 11, padding: 13, backgroundColor: palette.graphite, borderWidth: 1, borderColor: palette.line, borderRadius: 18 },
+  privacyCard: { flexDirection: "row", gap: 11, padding: 13, backgroundColor: palette.elevated, borderWidth: 1, borderColor: palette.line, borderRadius: 15 },
   privacyIcon: { width: 37, height: 37, borderRadius: 13, backgroundColor: "#77F3C414", alignItems: "center", justifyContent: "center" },
   privacyCopy: { flex: 1 },
   privacyRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 9, paddingVertical: 13 },
@@ -162,11 +161,11 @@ const styles = StyleSheet.create({
   textActionText: { color: palette.mint, fontSize: 10, fontWeight: "900", letterSpacing: 0.8 },
   pressed: { opacity: 0.75, transform: [{ scale: 0.98 }] },
   shade: { flex: 1, justifyContent: "flex-end", backgroundColor: "#00000099" },
-  sheet: { backgroundColor: "#121720", borderTopLeftRadius: 27, borderTopRightRadius: 27, paddingHorizontal: 18, paddingBottom: 26, paddingTop: 9, borderTopWidth: 1, borderColor: palette.line },
+  sheet: { backgroundColor: palette.graphite, borderTopLeftRadius: 27, borderTopRightRadius: 27, paddingHorizontal: 18, paddingBottom: 26, paddingTop: 9, borderTopWidth: 1, borderColor: palette.line },
   grabber: { alignSelf: "center", height: 4, width: 38, borderRadius: 3, backgroundColor: "#526072", marginBottom: 18 },
   sheetLead: { color: palette.mist, fontSize: 13, lineHeight: 19, marginTop: 9, marginBottom: 16 },
   fieldLabel: { color: palette.mint, fontSize: 10, fontWeight: "800", letterSpacing: 1.1, marginBottom: 6, marginTop: 11 },
-  field: { color: palette.cloud, backgroundColor: palette.graphite, borderWidth: 1, borderColor: palette.line, borderRadius: 14, paddingHorizontal: 13, paddingVertical: 11, fontSize: 14 },
+  field: { color: palette.cloud, backgroundColor: palette.elevated, borderWidth: 1, borderColor: palette.line, borderRadius: 14, paddingHorizontal: 13, paddingVertical: 11, fontSize: 14 },
   detailField: { minHeight: 86, textAlignVertical: "top" },
   primary: { marginTop: 20, backgroundColor: palette.mint, borderRadius: 15, paddingVertical: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   primaryText: { color: palette.ink, fontSize: 14, fontWeight: "900" },

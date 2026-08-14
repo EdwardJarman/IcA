@@ -13,8 +13,7 @@ export default function ActivityScreen() {
   return (
     <ScreenContainer containerClassName="bg-background" className="flex-1" edges={["top", "left", "right"]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.head}><View><Text style={styles.eyebrow}>ACTIVITY CENTER</Text><Text style={styles.title}>Stay in control.</Text></View><IconButton icon="done-all" label="Mark notifications read" onPress={markNotificationsRead} tone={unreadCount ? "mint" : "default"} /></View>
-        <Text style={styles.lead}>Approvals, handoffs, task updates, and notifications are gathered here so autonomous work never becomes invisible.</Text>
+        <View style={styles.head}><View><Text style={styles.title}>Activity</Text><Text style={styles.lead}>Decisions, handoffs, and updates in one quiet timeline.</Text></View><IconButton icon="done-all" label="Mark notifications read" onPress={markNotificationsRead} tone={unreadCount ? "mint" : "default"} /></View>
 
         <SectionTitle eyebrow="Decision queue" title={pendingApprovals.length ? `${pendingApprovals.length} approval${pendingApprovals.length === 1 ? "" : "s"} waiting` : "No approvals waiting"} />
         {pendingApprovals.length ? <View style={styles.cards}>{pendingApprovals.map((approval) => { const bot = bots.find((entry) => entry.id === approval.botId); return <View key={approval.id} style={styles.approvalCard}><View style={styles.approvalHead}><View style={styles.approvalIdentity}>{bot ? <Avatar label={bot.avatar} color={bot.color} size={36} /> : null}<View><Text style={styles.cardTitle}>{approval.title}</Text><Text style={styles.cardMeta}>{bot?.name ?? "Luma"} · {approval.createdAt}</Text></View></View><StatusPill label={`${approval.risk} risk`} tone="amber" /></View><Text style={styles.cardDetail}>{approval.detail}</Text><View style={styles.approvalActions}><Pressable accessibilityRole="button" onPress={() => resolveApproval(approval.id, "Declined")} style={({ pressed }) => [styles.declineButton, pressed && styles.pressed]}><Text style={styles.declineText}>Decline</Text></Pressable><Pressable accessibilityRole="button" onPress={() => resolveApproval(approval.id, "Approved")} style={({ pressed }) => [styles.approveButton, pressed && styles.pressed]}><MaterialIcons name="check" size={18} color={palette.ink} /><Text style={styles.approveText}>Approve</Text></Pressable></View></View>; })}</View> : <EmptyState icon="verified-user" title="Nothing needs a decision" detail="Luma will bring external, irreversible, sensitive, or high-impact actions here before continuing." />}
@@ -33,13 +32,13 @@ export default function ActivityScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: 18, paddingTop: 17, paddingBottom: 30, gap: 18 },
+  content: { paddingHorizontal: 18, paddingTop: 18, paddingBottom: 30, gap: 20, maxWidth: 780, width: "100%", alignSelf: "center" },
   head: { flexDirection: "row", justifyContent: "space-between", gap: 14 },
-  eyebrow: { color: palette.mint, fontSize: 10, fontWeight: "800", letterSpacing: 1.3, marginBottom: 5 },
-  title: { color: palette.cloud, fontSize: 28, fontWeight: "900", letterSpacing: -0.9, lineHeight: 34 },
-  lead: { color: palette.mist, fontSize: 14, lineHeight: 20, marginTop: -10 },
+  eyebrow: { color: palette.mist, fontSize: 10, fontWeight: "800", letterSpacing: 1.2, marginBottom: 5 },
+  title: { color: palette.cloud, fontSize: 24, fontWeight: "800", letterSpacing: -0.6, lineHeight: 30 },
+  lead: { color: palette.mist, fontSize: 13, lineHeight: 19, marginTop: 5, maxWidth: 330 },
   cards: { gap: 9 },
-  approvalCard: { backgroundColor: "#F6C65B0E", borderWidth: 1, borderColor: "#F6C65B40", borderRadius: 20, padding: 14, gap: 12 },
+  approvalCard: { backgroundColor: "#FFF9EE", borderWidth: 1, borderColor: "#F0D59D", borderRadius: 15, padding: 14, gap: 12 },
   approvalHead: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 8 },
   approvalIdentity: { flex: 1, flexDirection: "row", alignItems: "center", gap: 9, minWidth: 0 },
   cardTitle: { color: palette.cloud, fontSize: 14, lineHeight: 19, fontWeight: "800" },
@@ -50,14 +49,14 @@ const styles = StyleSheet.create({
   declineText: { color: palette.coral, fontSize: 13, fontWeight: "800" },
   approveButton: { flex: 1, flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center", borderRadius: 13, paddingVertical: 12, backgroundColor: palette.mint },
   approveText: { color: palette.ink, fontSize: 13, fontWeight: "900" },
-  handoffCard: { backgroundColor: palette.graphite, borderWidth: 1, borderColor: palette.line, borderRadius: 20, padding: 15, gap: 10 },
+  handoffCard: { backgroundColor: palette.elevated, borderWidth: 1, borderColor: palette.line, borderRadius: 15, padding: 15, gap: 10 },
   handoffLine: { flexDirection: "row", alignItems: "center", paddingVertical: 3 },
-  handoffNode: { width: 32, height: 32, borderRadius: 11, backgroundColor: "#77F3C416", borderWidth: 1, borderColor: "#77F3C466", alignItems: "center", justifyContent: "center" },
+  handoffNode: { width: 32, height: 32, borderRadius: 11, backgroundColor: "#18B98216", borderWidth: 1, borderColor: "#18B98266", alignItems: "center", justifyContent: "center" },
   handoffInitial: { color: palette.mint, fontSize: 13, fontWeight: "900" },
   handoffConnector: { height: 1, flex: 1, backgroundColor: palette.line, marginHorizontal: 6 },
   handoffTitle: { color: palette.cloud, fontSize: 14, fontWeight: "800" },
   handoffFoot: { paddingTop: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
-  textAction: { paddingHorizontal: 9, paddingVertical: 7, borderRadius: 10, backgroundColor: "#77F3C414" },
+  textAction: { paddingHorizontal: 9, paddingVertical: 7, borderRadius: 10, backgroundColor: "#18B98214" },
   textActionText: { color: palette.mint, fontSize: 9, fontWeight: "900", letterSpacing: 0.6 },
   timeline: { gap: 0 },
   timelineRow: { flexDirection: "row", minHeight: 66 },
@@ -68,9 +67,9 @@ const styles = StyleSheet.create({
   timelineTitle: { color: palette.cloud, fontSize: 13, lineHeight: 18, fontWeight: "800" },
   timelineDetail: { color: palette.mist, fontSize: 11, lineHeight: 16, marginTop: 3 },
   timelineTime: { color: "#687383", fontSize: 10, marginTop: 5 },
-  notificationCard: { backgroundColor: palette.graphite, borderWidth: 1, borderColor: palette.line, borderRadius: 19, overflow: "hidden" },
+  notificationCard: { backgroundColor: palette.graphite, borderWidth: 1, borderColor: palette.line, borderRadius: 15, overflow: "hidden" },
   notificationRow: { flexDirection: "row", alignItems: "center", gap: 10, padding: 13 },
-  notificationIcon: { width: 35, height: 35, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: "#77F3C414" },
+  notificationIcon: { width: 35, height: 35, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: "#18B98214" },
   notificationCopy: { flex: 1, minWidth: 0 },
   notificationUnread: { color: palette.mint },
   noticeTime: { color: palette.mist, fontSize: 10 },

@@ -3,22 +3,22 @@ import { type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 export const palette = {
-  ink: "#0B0D11",
-  graphite: "#151922",
-  elevated: "#1C2330",
-  line: "#2B3443",
-  cloud: "#F4F6F8",
-  mist: "#9AA4B2",
-  mint: "#77F3C4",
-  amber: "#F6C65B",
-  coral: "#FF7B7B",
-  lavender: "#B9B5FF",
+  ink: "#17181B",
+  graphite: "#FFFFFF",
+  elevated: "#F6F6F7",
+  line: "#E7E7EA",
+  cloud: "#17181B",
+  mist: "#777982",
+  mint: "#18B982",
+  amber: "#B77912",
+  coral: "#D65A5A",
+  lavender: "#7563F5",
 };
 
 export function Avatar({ label, color = palette.mint, size = 38 }: { label: string; color?: string; size?: number }) {
   return (
-    <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2, backgroundColor: `${color}22`, borderColor: `${color}66` }]}>
-      <Text style={[styles.avatarLabel, { color, fontSize: Math.max(12, size * 0.4) }]}>{label.slice(0, 1).toUpperCase()}</Text>
+    <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2, backgroundColor: color, borderColor: color }]}> 
+      <Text style={[styles.avatarLabel, { color: "#FFFFFF", fontSize: Math.max(12, size * 0.4) }]}>{label.slice(0, 1).toUpperCase()}</Text>
     </View>
   );
 }
@@ -34,7 +34,7 @@ export function StatusPill({ label, tone = "mint" }: { label: string; tone?: "mi
 }
 
 export function IconButton({ icon, label, onPress, tone = "default" }: { icon: React.ComponentProps<typeof MaterialIcons>["name"]; label: string; onPress: () => void; tone?: "default" | "mint" | "danger" }) {
-  const color = tone === "mint" ? palette.mint : tone === "danger" ? palette.coral : palette.cloud;
+  const color = tone === "mint" ? palette.mint : tone === "danger" ? palette.coral : palette.ink;
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
       <MaterialIcons name={icon} size={21} color={color} />
@@ -75,14 +75,14 @@ const styles = StyleSheet.create({
   pill: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999 },
   dot: { width: 6, height: 6, borderRadius: 4 },
   pillText: { fontSize: 11, fontWeight: "700" },
-  iconButton: { width: 42, height: 42, borderRadius: 15, backgroundColor: palette.elevated, borderWidth: 1, borderColor: palette.line, alignItems: "center", justifyContent: "center" },
+  iconButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: palette.graphite, borderWidth: 1, borderColor: palette.line, alignItems: "center", justifyContent: "center" },
   pressed: { opacity: 0.72, transform: [{ scale: 0.97 }] },
   sectionHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
   sectionHeadCopy: { flex: 1 },
-  eyebrow: { color: palette.mint, fontSize: 10, fontWeight: "800", letterSpacing: 1.4, marginBottom: 3 },
-  sectionTitle: { color: palette.cloud, fontSize: 21, lineHeight: 27, letterSpacing: -0.4, fontWeight: "800" },
+  eyebrow: { color: palette.mist, fontSize: 10, fontWeight: "800", letterSpacing: 1.2, marginBottom: 3 },
+  sectionTitle: { color: palette.cloud, fontSize: 19, lineHeight: 25, letterSpacing: -0.35, fontWeight: "800" },
   empty: { alignItems: "center", paddingVertical: 34, paddingHorizontal: 24, gap: 9 },
-  emptyIcon: { width: 50, height: 50, borderRadius: 18, backgroundColor: "#77F3C418", alignItems: "center", justifyContent: "center", marginBottom: 3 },
+  emptyIcon: { width: 50, height: 50, borderRadius: 18, backgroundColor: "#18B98216", alignItems: "center", justifyContent: "center", marginBottom: 3 },
   emptyTitle: { color: palette.cloud, fontSize: 16, fontWeight: "800", textAlign: "center" },
   emptyDetail: { color: palette.mist, fontSize: 13, lineHeight: 19, textAlign: "center", maxWidth: 260 },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: palette.line },

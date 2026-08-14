@@ -15,3 +15,7 @@
 - [x] Add notification permission, device registration, and task-event delivery for approval and completion alerts
 - [x] Add notification preference controls and safe local fallback behavior
 - [x] Validate notification event routing and checkpoint the notification update
+- [x] Research Grok Bot’s current interaction patterns and synthesize the provided interface references
+- [x] Redesign Luma as an original minimalist Bot-first workroom for mobile and desktop
+- [x] Simplify Bot, Library, and Activity surfaces while preserving accessibility and task transparency
+- [x] Validate and checkpoint the minimalist UI refinement

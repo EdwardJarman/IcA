@@ -35,15 +35,14 @@ export default function BotsScreen() {
   return (
     <ScreenContainer containerClassName="bg-background" className="flex-1" edges={["top", "left", "right"]}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.head}><View><Text style={styles.eyebrow}>BOT DIRECTORY</Text><Text style={styles.title}>Clear owners. Calm handoffs.</Text></View><IconButton icon="add" label="Create a Bot" onPress={() => setNewOpen(true)} tone="mint" /></View>
-        <Text style={styles.lead}>Give each Bot a specific job, visible boundaries, and a small working context. Bots are not a security boundary from one another.</Text>
+        <View style={styles.head}><View><Text style={styles.title}>Your Bots</Text><Text style={styles.lead}>A small team for the work you want to keep moving.</Text></View><IconButton icon="add" label="Create a Bot" onPress={() => setNewOpen(true)} tone="mint" /></View>
 
-        <SectionTitle eyebrow="Your team" title={`${bots.length} Bots`} />
+        <SectionTitle eyebrow="Your team" title={`${bots.length} teammates`} />
         <View style={styles.list}>
           {bots.map((bot) => (
             <Pressable key={bot.id} accessibilityRole="button" onPress={() => { selectBot(bot.id); setOpenBot(bot); }} style={({ pressed }) => [styles.botCard, bot.id === selectedBotId && styles.botCardActive, pressed && styles.pressed]}>
               <Avatar label={bot.avatar} color={bot.color} size={46} />
-              <View style={styles.botCopy}><View style={styles.nameLine}><Text style={styles.botName}>{bot.name}</Text><StatusPill label={bot.status} tone={bot.status === "Working" ? "mint" : bot.status === "Paused" ? "amber" : "muted"} /></View><Text style={styles.role}>{bot.role}</Text><Text numberOfLines={2} style={styles.purpose}>{bot.purpose}</Text></View>
+              <View style={styles.botCopy}><View style={styles.nameLine}><Text style={styles.botName}>{bot.name}</Text><StatusPill label={bot.status} tone={bot.status === "Working" ? "mint" : bot.status === "Paused" ? "amber" : "muted"} /></View><Text numberOfLines={1} style={styles.purpose}>{bot.role} · {bot.lastActive}</Text></View>
               <MaterialIcons name="chevron-right" size={21} color={palette.mist} />
             </Pressable>
           ))}
@@ -73,26 +72,26 @@ export default function BotsScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: 18, paddingTop: 17, paddingBottom: 30, gap: 19 },
+  content: { paddingHorizontal: 18, paddingTop: 18, paddingBottom: 30, gap: 20, maxWidth: 780, width: "100%", alignSelf: "center" },
   head: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 14 },
-  eyebrow: { color: palette.mint, fontSize: 10, fontWeight: "800", letterSpacing: 1.3, marginBottom: 5 },
-  title: { color: palette.cloud, fontSize: 28, lineHeight: 34, fontWeight: "900", letterSpacing: -0.9, maxWidth: 280 },
-  lead: { color: palette.mist, fontSize: 14, lineHeight: 20, marginTop: -9 },
+  eyebrow: { color: palette.mist, fontSize: 10, fontWeight: "800", letterSpacing: 1.2, marginBottom: 5 },
+  title: { color: palette.cloud, fontSize: 24, lineHeight: 30, fontWeight: "800", letterSpacing: -0.6, maxWidth: 280 },
+  lead: { color: palette.mist, fontSize: 13, lineHeight: 19, marginTop: 5, maxWidth: 330 },
   list: { gap: 9, marginTop: -5 },
-  botCard: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: palette.graphite, borderWidth: 1, borderColor: palette.line, borderRadius: 20, padding: 12 },
-  botCardActive: { borderColor: "#77F3C477", backgroundColor: "#77F3C40D" },
+  botCard: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: palette.graphite, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: palette.line, borderRadius: 0, paddingVertical: 12 },
+  botCardActive: { backgroundColor: palette.elevated, borderRadius: 14, paddingHorizontal: 10 },
   botCopy: { flex: 1, minWidth: 0 },
   nameLine: { flexDirection: "row", alignItems: "center", gap: 7, justifyContent: "space-between" },
   botName: { color: palette.cloud, fontSize: 15, fontWeight: "800" },
   role: { color: palette.mint, fontSize: 11, fontWeight: "700", marginTop: 3 },
-  purpose: { color: palette.mist, fontSize: 12, lineHeight: 17, marginTop: 5 },
+  purpose: { color: palette.mist, fontSize: 12, lineHeight: 17, marginTop: 4 },
   templateGrid: { gap: 9 },
-  template: { backgroundColor: palette.elevated, borderColor: palette.line, borderWidth: 1, padding: 13, borderRadius: 18, gap: 5 },
+  template: { backgroundColor: palette.elevated, borderColor: palette.line, borderWidth: 1, padding: 13, borderRadius: 15, gap: 5 },
   templateTitle: { color: palette.cloud, fontSize: 14, fontWeight: "800", marginTop: 3 },
   templateDetail: { color: palette.mist, fontSize: 12, lineHeight: 17 },
   pressed: { opacity: 0.75, transform: [{ scale: 0.98 }] },
   shade: { flex: 1, justifyContent: "flex-end", backgroundColor: "#00000099" },
-  sheet: { backgroundColor: "#121720", borderTopLeftRadius: 27, borderTopRightRadius: 27, paddingHorizontal: 18, paddingBottom: 26, paddingTop: 9, borderTopWidth: 1, borderColor: palette.line },
+  sheet: { backgroundColor: palette.graphite, borderTopLeftRadius: 27, borderTopRightRadius: 27, paddingHorizontal: 18, paddingBottom: 26, paddingTop: 9, borderTopWidth: 1, borderColor: palette.line },
   grabber: { alignSelf: "center", height: 4, width: 38, borderRadius: 3, backgroundColor: "#526072", marginBottom: 18 },
   profileHead: { flexDirection: "row", alignItems: "center", gap: 11 },
   profileCopy: { flex: 1 },
@@ -107,7 +106,7 @@ const styles = StyleSheet.create({
   secondaryText: { color: palette.cloud, fontSize: 13, fontWeight: "800" },
   sheetLead: { color: palette.mist, fontSize: 13, lineHeight: 19, marginTop: 9, marginBottom: 17 },
   fieldLabel: { color: palette.mint, fontSize: 10, fontWeight: "800", letterSpacing: 1.1, marginBottom: 6, marginTop: 11 },
-  field: { color: palette.cloud, backgroundColor: palette.graphite, borderWidth: 1, borderColor: palette.line, borderRadius: 14, paddingHorizontal: 13, paddingVertical: 11, fontSize: 14 },
+  field: { color: palette.cloud, backgroundColor: palette.elevated, borderWidth: 1, borderColor: palette.line, borderRadius: 14, paddingHorizontal: 13, paddingVertical: 11, fontSize: 14 },
   goal: { minHeight: 82, textAlignVertical: "top" },
   primary: { marginTop: 20, backgroundColor: palette.mint, borderRadius: 15, paddingVertical: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   primaryText: { color: palette.ink, fontSize: 14, fontWeight: "900" },
