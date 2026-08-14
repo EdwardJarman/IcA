@@ -17,7 +17,7 @@ export const palette = {
 
 export function Avatar({ label, color = palette.mint, size = 38, icon }: { label: string; color?: string; size?: number; icon?: string }) {
   return (
-    <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2, backgroundColor: color, borderColor: color }]}> 
+    <View style={[styles.avatar, { width: size, height: size, borderRadius: size * 0.34, backgroundColor: color, borderColor: color }]}> 
       {icon ? <MaterialIcons name={icon as never} size={Math.max(16, size * 0.48)} color="#FFFFFF" /> : <Text style={[styles.avatarLabel, { color: "#FFFFFF", fontSize: Math.max(12, size * 0.4) }]}>{label.slice(0, 1).toUpperCase()}</Text>}
     </View>
   );
@@ -72,17 +72,17 @@ export function Divider() {
 const styles = StyleSheet.create({
   avatar: { alignItems: "center", justifyContent: "center", borderWidth: 1 },
   avatarLabel: { fontWeight: "800", letterSpacing: -0.5 },
-  pill: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999 },
+  pill: { flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 11 },
   dot: { width: 6, height: 6, borderRadius: 4 },
   pillText: { fontSize: 11, fontWeight: "700" },
-  iconButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: palette.graphite, borderWidth: 1, borderColor: palette.line, alignItems: "center", justifyContent: "center" },
+  iconButton: { width: 40, height: 40, borderRadius: 15, backgroundColor: palette.graphite, borderWidth: 1, borderColor: palette.line, alignItems: "center", justifyContent: "center", shadowColor: "#17181B", shadowOpacity: 0.035, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
   pressed: { opacity: 0.72, transform: [{ scale: 0.97 }] },
   sectionHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
   sectionHeadCopy: { flex: 1 },
   eyebrow: { color: palette.mist, fontSize: 10, fontWeight: "800", letterSpacing: 1.2, marginBottom: 3 },
   sectionTitle: { color: palette.cloud, fontSize: 19, lineHeight: 25, letterSpacing: -0.35, fontWeight: "800" },
-  empty: { alignItems: "center", paddingVertical: 34, paddingHorizontal: 24, gap: 9 },
-  emptyIcon: { width: 50, height: 50, borderRadius: 18, backgroundColor: "#18B98216", alignItems: "center", justifyContent: "center", marginBottom: 3 },
+  empty: { alignItems: "center", paddingVertical: 38, paddingHorizontal: 24, gap: 9 },
+  emptyIcon: { width: 52, height: 52, borderRadius: 20, backgroundColor: "#7563F512", alignItems: "center", justifyContent: "center", marginBottom: 5 },
   emptyTitle: { color: palette.cloud, fontSize: 16, fontWeight: "800", textAlign: "center" },
   emptyDetail: { color: palette.mist, fontSize: 13, lineHeight: 19, textAlign: "center", maxWidth: 260 },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: palette.line },

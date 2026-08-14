@@ -100,17 +100,17 @@ export default function WorkroomScreen() {
     <ScreenContainer containerClassName="bg-background" className="flex-1" edges={["top", "left", "right"]}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <View style={styles.topbar}>
-          {selectedBot ? <Pressable accessibilityRole="button" accessibilityLabel="Switch Bot" onPress={() => setBotPickerOpen(true)} style={({ pressed }) => [styles.botSelector, pressed && styles.pressed]}><Avatar label={selectedBot.avatar} color={selectedBot.color} icon={selectedBot.icon} size={34} /><View style={styles.botSelectorCopy}><Text style={styles.botSelectorName}>{selectedBot.name}</Text><Text style={styles.botSelectorRole}>{selectedBot.role}</Text></View><MaterialIcons name="keyboard-arrow-down" size={19} color={palette.mist} /></Pressable> : <View style={styles.brand}><View style={styles.brandMark}><MaterialIcons name="auto-awesome" size={16} color="#FFFFFF" /></View><Text style={styles.brandName}>Luma</Text></View>}
+          {selectedBot ? <Pressable accessibilityRole="button" accessibilityLabel="Switch Bot" onPress={() => setBotPickerOpen(true)} style={({ pressed }) => [styles.botSelector, pressed && styles.pressed]}><Avatar label={selectedBot.avatar} color={selectedBot.color} icon={selectedBot.icon} size={34} /><View style={styles.botSelectorCopy}><Text style={styles.botSelectorName}>{selectedBot.name}</Text><Text style={styles.botSelectorRole}>{selectedBot.role}</Text></View><MaterialIcons name="keyboard-arrow-down" size={19} color={palette.mist} /></Pressable> : <View style={styles.brand}><View style={styles.brandMark}><MaterialIcons name="auto-awesome" size={16} color="#FFFFFF" /></View><Text style={styles.brandName}>UmU</Text></View>}
           <View style={styles.topbarActions}><IconButton icon="add" label="Create a Bot" onPress={openBotCreation} tone="mint" />{selectedBot ? <IconButton icon="more-horiz" label="Open Activity" onPress={() => router.navigate("/activity" as never)} /> : null}</View>
         </View>
 
         {!ready ? <View style={styles.loading}><Text style={styles.loadingText}>Opening your workroom…</Text></View> : !selectedBot ? (
           <View style={styles.emptyWorkspace}>
             <View style={styles.orbit}><View style={styles.orbitDot} /><View style={[styles.orbitDot, styles.orbitDotTwo]} /><View style={[styles.orbitDot, styles.orbitDotThree]} /><View style={styles.orbitCore}><MaterialIcons name="auto-awesome" size={31} color="#FFFFFF" /></View></View>
-            <Text style={styles.emptyTitle}>Make your first Bot.</Text>
-            <Text style={styles.emptyDetail}>Give it a name, define the work it owns, and decide when it should stop for you. Nothing is pre-made.</Text>
-            <Pressable accessibilityRole="button" onPress={openBotCreation} style={({ pressed }) => [styles.createFirstButton, pressed && styles.pressed]}><Text style={styles.createFirstText}>Create a Bot</Text><MaterialIcons name="arrow-forward" size={19} color="#FFFFFF" /></Pressable>
-            <Text style={styles.emptyFootnote}>You can add files, skills, routines, and more Bots only when you need them.</Text>
+            <Text style={styles.emptyTitle}>Start with one good Bot.</Text>
+            <Text style={styles.emptyDetail}>Give it a name, a job, and a clear point to pause for you. UmU begins exactly where you do.</Text>
+            <Pressable accessibilityRole="button" onPress={openBotCreation} style={({ pressed }) => [styles.createFirstButton, pressed && styles.pressed]}><Text style={styles.createFirstText}>Make a Bot</Text><MaterialIcons name="arrow-forward" size={19} color="#FFFFFF" /></Pressable>
+            <Text style={styles.emptyFootnote}>Add more teammates only when the work naturally calls for them.</Text>
           </View>
         ) : (
           <>

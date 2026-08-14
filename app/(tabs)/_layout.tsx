@@ -31,7 +31,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Workroom",
+          title: "Work",
           tabBarIcon: ({ color }) => <IconSymbol size={25} name="message.fill" color={color} />,
         }}
       />
@@ -45,14 +45,14 @@ export default function TabLayout() {
       <Tabs.Screen
         name="library"
         options={{
-          title: "Library",
+          title: "Space",
           tabBarIcon: ({ color }) => <IconSymbol size={25} name="books.vertical.fill" color={color} />,
         }}
       />
       <Tabs.Screen
         name="activity"
         options={{
-          title: "Activity",
+          title: "Updates",
           tabBarIcon: ({ color }) => <IconSymbol size={25} name="bell.fill" color={color} />,
         }}
       />

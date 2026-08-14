@@ -40,3 +40,8 @@
 - [x] Add independently queryable user-scoped Bot, task, and file cloud records
 - [x] Synchronize alert preferences across a user’s registered devices
 - [x] Migrate, test, and checkpoint account data-management features
+- [x] Define the UmU identity and original reference-informed Bot-workspace interaction flow
+- [x] Rename Luma Workroom to UmU across configuration and user-facing interface copy
+- [x] Rebuild UmU onboarding, Bot roster, and focused conversation surfaces with a clean, rounded flow
+- [x] Refine supporting screens and interaction feedback for the UmU visual system
+- [x] Validate and checkpoint the UmU redesign
