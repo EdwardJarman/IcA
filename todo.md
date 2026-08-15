@@ -59,3 +59,8 @@
 - [x] Apply and validate a Vercel-safe static web export fix
 - [x] Push the complete verified Vercel cache-build fix to IcA
 - [x] Checkpoint the Vercel Metro repair
+- [x] Confirm the Clerk integration checklist and account-linking permission
+- [x] Review UmU’s Expo auth architecture and Clerk mobile requirements
+- [x] Initialize Clerk for app_3HxBP93ZNYgvl8P5uksqjO559t7 and implement the mobile auth flow
+- [x] Validate Clerk sign-in, sign-up, and signed-in account controls
+- [ ] Push the verified Clerk authentication integration to IcA

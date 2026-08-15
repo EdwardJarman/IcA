@@ -1,6 +1,5 @@
 import { COOKIE_NAME } from "../shared/const";
 import { normalizeWorkroomSnapshot } from "../shared/workroom-snapshot";
-import { getSessionCookieOptions } from "./_core/cookies";
 import { invokeLLM, listLLMModels } from "./_core/llm";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { systemRouter } from "./_core/systemRouter";
@@ -12,11 +11,7 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => {
-      const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
-      return { success: true } as const;
-    }),
+    logout: publicProcedure.mutation(() => ({ success: true } as const)),
   }),
   workroom: router({
     reply: protectedProcedure.input(z.object({ botName: z.string().min(1).max(80), botRole: z.string().min(1).max(120), botPurpose: z.string().min(1).max(500), message: z.string().min(1).max(4000), recentContext: z.array(z.object({ author: z.enum(["user", "bot", "system"]), body: z.string().max(2000) })).max(8) })).mutation(async ({ ctx, input }) => {
@@ -46,8 +41,7 @@ export const appRouter = router({
     }),
   }),
   cloud: router({
-    load: protectedProcedure.input(z.object({ accountId: z.number().int().positive() })).query(async ({ ctx, input }) => {
-      if (input.accountId !== ctx.user.id) throw new Error("Account mismatch.");
+    load: protectedProcedure.query(async ({ ctx }) => {
       const record = await db.getWorkroomSnapshot(ctx.user.id);
       return { snapshot: record?.snapshot ?? null, updatedAt: record?.updatedAt?.toISOString() ?? null };
     }),

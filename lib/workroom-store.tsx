@@ -42,7 +42,7 @@ export function WorkroomProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<WorkNotification[]>([]);
   const [activity, setActivity] = useState<Activity[]>([]);
   const localStorageKey = useMemo(() => `${STORAGE_KEY_PREFIX}-${user?.id ?? "signed-out"}`, [user?.id]);
-  const cloudQuery = trpc.cloud.load.useQuery({ accountId: user?.id ?? 0 }, { enabled: isAuthenticated && Boolean(user?.id), retry: 1, refetchOnWindowFocus: false });
+  const cloudQuery = trpc.cloud.load.useQuery(undefined, { enabled: isAuthenticated && Boolean(user?.id), retry: 1, refetchOnWindowFocus: false });
   const saveCloud = trpc.cloud.save.useMutation();
 
   const applySnapshot = useCallback((value: unknown) => {
