@@ -49,3 +49,6 @@
 - [x] Identify the Expo web export output and configure Vercel deployment settings
 - [x] Verify the Vercel-targeted web build and restart the UmU development server
 - [x] Checkpoint the deployment-readiness fix
+- [ ] Identify why Vercel is still overriding the repository output directory
+- [ ] Remove the active public-directory setting and validate a Vercel-compatible build
+- [ ] Checkpoint the corrected Vercel project configuration
