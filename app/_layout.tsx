@@ -24,8 +24,9 @@ import { ThemeProvider } from "@/lib/theme-provider";
 import { createTRPCClient, trpc } from "@/lib/trpc";
 import { WorkroomProvider } from "@/lib/workroom-store";
 import { useAuth } from "@/hooks/use-auth";
+import { resolveClerkPublishableKey } from "@/shared/clerk-public-config";
 
-const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
+const publishableKey = resolveClerkPublishableKey(process.env);
 
 if (!publishableKey) {
   throw new Error("Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY. Configure Clerk before starting UmU.");
