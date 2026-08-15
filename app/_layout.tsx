@@ -2,7 +2,6 @@ import { ClerkProvider, useAuth as useClerkAuth } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import "@/global.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import * as Notifications from "expo-notifications";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -24,9 +23,11 @@ import { ThemeProvider } from "@/lib/theme-provider";
 import { createTRPCClient, trpc } from "@/lib/trpc";
 import { WorkroomProvider } from "@/lib/workroom-store";
 import { useAuth } from "@/hooks/use-auth";
-import { resolveClerkPublishableKey } from "@/shared/clerk-public-config";
+import { NotificationNavigationObserver } from "@/components/notification-navigation";
 
-const publishableKey = resolveClerkPublishableKey(process.env);
+// Expo only inlines EXPO_PUBLIC_* values when referenced directly. The Vercel
+// build wrapper maps CLERK_PUBLISHABLE_KEY to this value before static export.
+const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
 
 if (!publishableKey) {
   throw new Error("Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY. Configure Clerk before starting UmU.");
@@ -36,23 +37,6 @@ const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
 const DEFAULT_WEB_FRAME: Rect = { x: 0, y: 0, width: 0, height: 0 };
 
 export const unstable_settings = { anchor: "(tabs)" };
-
-function NotificationNavigationObserver() {
-  const router = useRouter();
-
-  useEffect(() => {
-    if (Platform.OS === "web") return;
-    const redirect = (response: Notifications.NotificationResponse | null) => {
-      const url = response?.notification.request.content.data?.url;
-      if (typeof url === "string" && url.startsWith("/")) router.push(url as never);
-    };
-    void Notifications.getLastNotificationResponseAsync().then(redirect);
-    const subscription = Notifications.addNotificationResponseReceivedListener(redirect);
-    return () => subscription.remove();
-  }, [router]);
-
-  return null;
-}
 
 function SessionNavigator() {
   const router = useRouter();

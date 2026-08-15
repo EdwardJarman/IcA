@@ -79,3 +79,7 @@
 - [x] Compare the current workspace with IcA main before final publication
 - [x] Commit and push every remaining UmU workspace change to IcA
 - [x] Verify IcA main exactly matches the current workspace after publication
+- [x] Diagnose the deployed browser bundle’s Clerk key and notification module regressions
+- [x] Implement browser-safe runtime configuration and notification loading
+- [x] Validate the deployed-equivalent web bundle and push the repair to IcA
+- [ ] Checkpoint the browser-bundle regression repair
