@@ -77,5 +77,5 @@
 - [x] Checkpoint the final Vercel build repair
 - [x] Obtain Vercel authorization through an accessible user-controlled flow
 - [x] Compare the current workspace with IcA main before final publication
-- [ ] Commit and push every remaining UmU workspace change to IcA
-- [ ] Verify IcA main exactly matches the current workspace after publication
+- [x] Commit and push every remaining UmU workspace change to IcA
+- [x] Verify IcA main exactly matches the current workspace after publication
