@@ -71,3 +71,8 @@
 - [x] Add deployment-safe Clerk public configuration and web notification guards
 - [x] Validate the corrected Vercel build and publish it to IcA
 - [x] Checkpoint the Vercel Clerk deployment repair
+- [x] Reproduce the current Vercel pnpm vercel-build failure with its actual build environment
+- [x] Repair the remaining Vercel build failure and validate the exact command
+- [ ] Push the verified final Vercel build repair to IcA
+- [ ] Checkpoint the final Vercel build repair
+- [x] Obtain Vercel authorization through an accessible user-controlled flow
