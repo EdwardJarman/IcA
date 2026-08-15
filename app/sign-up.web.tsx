@@ -2,15 +2,15 @@ import { SignUp } from "@clerk/expo/web";
 import { StyleSheet, Text, View } from "react-native";
 
 import { ScreenContainer } from "@/components/screen-container";
-import { palette } from "@/components/luma-primitives";
+import { palette } from "@/components/rook-primitives";
 
 export default function WebSignUpScreen() {
   return (
     <ScreenContainer edges={["top", "bottom", "left", "right"]} containerClassName="bg-background" className="flex-1">
       <View style={styles.screen}>
-        <Text style={styles.wordmark}>UmU</Text>
+        <Text style={styles.wordmark}>Rook</Text>
         <Text style={styles.title}>Start with a clear workroom.</Text>
-        <Text style={styles.detail}>Create your secure UmU account, then make your first Bot from scratch.</Text>
+        <Text style={styles.detail}>Create your secure Rook account, then make your first Bot from scratch.</Text>
         <View style={styles.card}>
           <SignUp routing="path" path="/sign-up" signInUrl="/sign-in" forceRedirectUrl="/" />
         </View>

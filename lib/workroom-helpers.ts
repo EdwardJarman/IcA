@@ -13,5 +13,5 @@ export function approvalReason(input: string): string {
   if (/\b(delete|remove)\b/i.test(input)) return "This action could remove information or artifacts.";
   if (/\b(purchase|buy|pay|transfer)\b/i.test(input)) return "This action could create a financial commitment.";
   if (/\b(permission|production|deploy)\b/i.test(input)) return "This action could change access or a live system.";
-  return "This action needs a visible decision before UmU continues.";
+  return "This action needs a visible decision before Rook continues.";
 }

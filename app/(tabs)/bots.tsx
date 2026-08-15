@@ -2,7 +2,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { Avatar, EmptyState, IconButton, SectionTitle, StatusPill, palette } from "@/components/luma-primitives";
+import { Avatar, EmptyState, IconButton, SectionTitle, StatusPill, palette } from "@/components/rook-primitives";
 import { BotIdentityPicker } from "@/components/bot-identity-picker";
 import { ScreenContainer } from "@/components/screen-container";
 import { useWorkroom, type Bot } from "@/lib/workroom-store";

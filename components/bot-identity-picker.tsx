@@ -1,7 +1,7 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { palette } from "@/components/luma-primitives";
+import { palette } from "@/components/rook-primitives";
 
 export const BOT_COLORS = ["#7563F5", "#198EDE", "#18B982", "#DF8D19", "#D95D78", "#8E6F47"];
 export const BOT_ICONS = ["auto-awesome", "search", "edit-note", "bolt", "insights", "rocket-launch", "code", "support-agent"] as const;

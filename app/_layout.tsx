@@ -17,7 +17,7 @@ import {
 import type { EdgeInsets, Metrics, Rect } from "react-native-safe-area-context";
 
 import "@/lib/_core/nativewind-pressable";
-import { LumaNotificationProvider } from "@/lib/luma-notifications";
+import { RookNotificationProvider } from "@/lib/rook-notifications";
 import { initManusRuntime, subscribeSafeAreaInsets } from "@/lib/_core/manus-runtime";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { createTRPCClient, trpc } from "@/lib/trpc";
@@ -30,7 +30,7 @@ import { NotificationNavigationObserver } from "@/components/notification-naviga
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
 
 if (!publishableKey) {
-  throw new Error("Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY. Configure Clerk before starting UmU.");
+  throw new Error("Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY. Configure Clerk before starting Rook.");
 }
 
 const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
@@ -69,7 +69,7 @@ function SessionNavigator() {
   );
 }
 
-function UmUApplication() {
+function RookApplication() {
   const { getToken } = useClerkAuth();
   const initialInsets = initialWindowMetrics?.insets ?? DEFAULT_WEB_INSETS;
   const initialFrame = initialWindowMetrics?.frame ?? DEFAULT_WEB_FRAME;
@@ -105,11 +105,11 @@ function UmUApplication() {
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
           <WorkroomProvider>
-            <LumaNotificationProvider>
+            <RookNotificationProvider>
               <NotificationNavigationObserver />
               <SessionNavigator />
               <StatusBar style="auto" />
-            </LumaNotificationProvider>
+            </RookNotificationProvider>
           </WorkroomProvider>
         </QueryClientProvider>
       </trpc.Provider>
@@ -132,7 +132,7 @@ function UmUApplication() {
 export default function RootLayout() {
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <UmUApplication />
+      <RookApplication />
     </ClerkProvider>
   );
 }

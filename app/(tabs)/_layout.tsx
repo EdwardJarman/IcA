@@ -16,12 +16,21 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: colors.tint,
+        tabBarInactiveTintColor: colors.muted,
         headerShown: false,
         tabBarButton: HapticTab,
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: "700",
+          marginTop: 1,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 2,
+        },
         tabBarStyle: {
           paddingTop: 8,
           paddingBottom: bottomPadding,
-          height: tabBarHeight,
+          height: tabBarHeight + 6,
           backgroundColor: colors.background,
           borderTopColor: colors.border,
           borderTopWidth: 0.5,
@@ -45,7 +54,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="library"
         options={{
-          title: "Space",
+          title: "Library",
           tabBarIcon: ({ color }) => <IconSymbol size={25} name="books.vertical.fill" color={color} />,
         }}
       />
@@ -54,6 +63,13 @@ export default function TabLayout() {
         options={{
           title: "Updates",
           tabBarIcon: ({ color }) => <IconSymbol size={25} name="bell.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="account"
+        options={{
+          title: "Account",
+          tabBarIcon: ({ color }) => <IconSymbol size={25} name="person.crop.circle" color={color} />,
         }}
       />
     </Tabs>

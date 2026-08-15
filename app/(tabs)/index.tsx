@@ -4,10 +4,10 @@ import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
 import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { Avatar, EmptyState, IconButton, SectionTitle, StatusPill, palette } from "@/components/luma-primitives";
+import { Avatar, EmptyState, IconButton, SectionTitle, StatusPill, palette } from "@/components/rook-primitives";
 import { BotIdentityPicker } from "@/components/bot-identity-picker";
 import { ScreenContainer } from "@/components/screen-container";
-import { useLumaNotifications } from "@/lib/luma-notifications";
+import { useRookNotifications } from "@/lib/rook-notifications";
 import { useWorkroom, type TaskStatus, type WorkTask } from "@/lib/workroom-store";
 import { trpc } from "@/lib/trpc";
 import { approvalReason, fileSizeLabel, requiresApproval } from "@/lib/workroom-helpers";
@@ -29,7 +29,7 @@ export default function WorkroomScreen() {
   const [newBotColor, setNewBotColor] = useState("#7563F5");
   const [newBotIcon, setNewBotIcon] = useState("auto-awesome");
   const replyMutation = trpc.workroom.reply.useMutation();
-  const { preferences: notificationPreferences, sendTaskAlert } = useLumaNotifications();
+  const { preferences: notificationPreferences, sendTaskAlert } = useRookNotifications();
 
   const selectedBot = useMemo(() => bots.find((bot) => bot.id === selectedBotId) ?? bots[0], [bots, selectedBotId]);
   const visibleMessages = selectedBot ? messages.filter((message) => message.botId === selectedBot.id) : [];
@@ -64,7 +64,7 @@ export default function WorkroomScreen() {
     setComposer("");
     if (requiresReview) {
       addApproval({ botId: selectedBot.id, title: task.title, detail: approvalReason(clean), risk: "Medium" });
-      void sendTaskAlert({ kind: "approval", title: "Approval needed in Luma", body: `${selectedBot.name} needs your decision`, url: "/activity" });
+      void sendTaskAlert({ kind: "approval", title: "Approval needed in Rook", body: `${selectedBot.name} needs your decision`, url: "/activity" });
       addMessage({ botId: selectedBot.id, author: "bot", body: `I can prepare the work, but I need your approval before this step. ${approvalReason(clean)}`, kind: "approval", taskId: task.id });
       return;
     }
@@ -91,7 +91,7 @@ export default function WorkroomScreen() {
       const asset = result.assets[0];
       addFile({ name: asset.name, size: fileSizeLabel(asset.size), scope: "Bot-private", owner: selectedBot.name });
       addMessage({ botId: selectedBot.id, author: "system", body: `Attached ${asset.name}. It is available only to ${selectedBot.name} in this local workroom.`, kind: "activity", attachmentName: asset.name });
-    } catch { Alert.alert("File attachment unavailable", "Luma could not attach this file. Please try again from the device file picker."); }
+    } catch { Alert.alert("File attachment unavailable", "Rook could not attach this file. Please try again from the device file picker."); }
   };
 
   const changeTaskState = (status: TaskStatus) => { if (!taskOpen) return; updateTaskStatus(taskOpen.id, status, status === "Cancelled" ? "This task will not take further actions." : taskOpen.nextAction); setTaskOpen({ ...taskOpen, status }); };
@@ -100,7 +100,7 @@ export default function WorkroomScreen() {
     <ScreenContainer containerClassName="bg-background" className="flex-1" edges={["top", "left", "right"]}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <View style={styles.topbar}>
-          {selectedBot ? <Pressable accessibilityRole="button" accessibilityLabel="Switch Bot" onPress={() => setBotPickerOpen(true)} style={({ pressed }) => [styles.botSelector, pressed && styles.pressed]}><Avatar label={selectedBot.avatar} color={selectedBot.color} icon={selectedBot.icon} size={34} /><View style={styles.botSelectorCopy}><Text style={styles.botSelectorName}>{selectedBot.name}</Text><Text style={styles.botSelectorRole}>{selectedBot.role}</Text></View><MaterialIcons name="keyboard-arrow-down" size={19} color={palette.mist} /></Pressable> : <View style={styles.brand}><View style={styles.brandMark}><MaterialIcons name="auto-awesome" size={16} color="#FFFFFF" /></View><Text style={styles.brandName}>UmU</Text></View>}
+          {selectedBot ? <Pressable accessibilityRole="button" accessibilityLabel="Switch Bot" onPress={() => setBotPickerOpen(true)} style={({ pressed }) => [styles.botSelector, pressed && styles.pressed]}><Avatar label={selectedBot.avatar} color={selectedBot.color} icon={selectedBot.icon} size={34} /><View style={styles.botSelectorCopy}><Text style={styles.botSelectorName}>{selectedBot.name}</Text><Text style={styles.botSelectorRole}>{selectedBot.role}</Text></View><MaterialIcons name="keyboard-arrow-down" size={19} color={palette.mist} /></Pressable> : <View style={styles.brand}><View style={styles.brandMark}><MaterialIcons name="auto-awesome" size={16} color="#FFFFFF" /></View><Text style={styles.brandName}>Rook</Text></View>}
           <View style={styles.topbarActions}><IconButton icon="add" label="Create a Bot" onPress={openBotCreation} tone="mint" />{selectedBot ? <IconButton icon="more-horiz" label="Open Activity" onPress={() => router.navigate("/activity" as never)} /> : null}</View>
         </View>
 
@@ -108,7 +108,7 @@ export default function WorkroomScreen() {
           <View style={styles.emptyWorkspace}>
             <View style={styles.orbit}><View style={styles.orbitDot} /><View style={[styles.orbitDot, styles.orbitDotTwo]} /><View style={[styles.orbitDot, styles.orbitDotThree]} /><View style={styles.orbitCore}><MaterialIcons name="auto-awesome" size={31} color="#FFFFFF" /></View></View>
             <Text style={styles.emptyTitle}>Start with one good Bot.</Text>
-            <Text style={styles.emptyDetail}>Give it a name, a job, and a clear point to pause for you. UmU begins exactly where you do.</Text>
+            <Text style={styles.emptyDetail}>Give it a name, a job, and a clear point to pause for you. Rook begins exactly where you do.</Text>
             <Pressable accessibilityRole="button" onPress={openBotCreation} style={({ pressed }) => [styles.createFirstButton, pressed && styles.pressed]}><Text style={styles.createFirstText}>Make a Bot</Text><MaterialIcons name="arrow-forward" size={19} color="#FFFFFF" /></Pressable>
             <Text style={styles.emptyFootnote}>Add more teammates only when the work naturally calls for them.</Text>
           </View>

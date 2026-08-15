@@ -2,13 +2,13 @@ import { SignIn } from "@clerk/expo/web";
 import { StyleSheet, Text, View } from "react-native";
 
 import { ScreenContainer } from "@/components/screen-container";
-import { palette } from "@/components/luma-primitives";
+import { palette } from "@/components/rook-primitives";
 
 export default function WebSignInScreen() {
   return (
     <ScreenContainer edges={["top", "bottom", "left", "right"]} containerClassName="bg-background" className="flex-1">
       <View style={styles.screen}>
-        <Text style={styles.wordmark}>UmU</Text>
+        <Text style={styles.wordmark}>Rook</Text>
         <Text style={styles.title}>Your workroom, ready when you are.</Text>
         <Text style={styles.detail}>Sign in securely to continue to your Bots, tasks, and private workroom.</Text>
         <View style={styles.card}>

@@ -19,6 +19,7 @@ const MAPPING = {
   "person.2.fill": "group",
   "books.vertical.fill": "auto-stories",
   "bell.fill": "notifications",
+  "person.crop.circle": "account-circle",
   "paperplane.fill": "send",
   "chevron.left.forwardslash.chevron.right": "code",
   "chevron.right": "chevron-right",

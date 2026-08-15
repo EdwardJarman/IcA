@@ -3,7 +3,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useState } from "react";
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { palette } from "@/components/luma-primitives";
+import { palette } from "@/components/rook-primitives";
 import { ScreenContainer } from "@/components/screen-container";
 
 type AuthMode = "sign-in" | "sign-up";
@@ -17,7 +17,7 @@ export default function SignInScreen() {
     try {
       await startHostedAuth({ mode: nextMode });
     } catch {
-      Alert.alert("Sign-in unavailable", "UmU could not open the secure Clerk sign-in page. Please check your connection and try again.");
+      Alert.alert("Sign-in unavailable", "Rook could not open the secure Clerk sign-in page. Please check your connection and try again.");
     } finally {
       setMode(null);
     }
@@ -32,14 +32,14 @@ export default function SignInScreen() {
           <View style={styles.dotThree} />
           <View style={styles.mark}><MaterialIcons name="auto-awesome" size={32} color="#FFFFFF" /></View>
         </View>
-        <Text style={styles.wordmark}>UmU</Text>
+        <Text style={styles.wordmark}>Rook</Text>
         <Text style={styles.title}>A small team for{"\n"}your real work.</Text>
         <Text style={styles.detail}>Make every Bot your own. Keep conversations, decisions, and files close without the noise.</Text>
         <View style={styles.actions}>
           <AuthButton mode="sign-in" label="Sign in" icon="login" loading={mode} onPress={() => void begin("sign-in")} />
           <AuthButton mode="sign-up" label="Create an account" icon="person-add-alt-1" loading={mode} onPress={() => void begin("sign-up")} />
         </View>
-        <Text style={styles.legal}>Secure sign-in is provided by Clerk. UmU never sees your password.</Text>
+        <Text style={styles.legal}>Secure sign-in is provided by Clerk. Rook never sees your password.</Text>
       </View>
     </ScreenContainer>
   );

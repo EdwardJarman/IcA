@@ -4,7 +4,7 @@ import { buildLoginUrl, type OAuthProvider } from "@/lib/oauth-url";
 
 // Extract scheme from bundle ID (last segment timestamp, prefixed with "manus")
 // e.g., "space.manus.my.app.t20240115103045" -> "manus20240115103045"
-const bundleId = "com.app.lumaworkroom";
+const bundleId = "com.app.rook";
 const timestamp = bundleId.split(".").pop()?.replace(/^t/, "") ?? "";
 const schemeFromBundleId = `manus${timestamp}`;
 

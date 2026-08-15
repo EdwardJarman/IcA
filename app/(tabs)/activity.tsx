@@ -1,7 +1,7 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { Avatar, Divider, EmptyState, IconButton, SectionTitle, StatusPill, palette } from "@/components/luma-primitives";
+import { Avatar, Divider, EmptyState, IconButton, SectionTitle, StatusPill, palette } from "@/components/rook-primitives";
 import { ScreenContainer } from "@/components/screen-container";
 import { useWorkroom } from "@/lib/workroom-store";
 

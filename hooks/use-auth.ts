@@ -1,7 +1,7 @@
 import { useAuth as useClerkAuth, useUser } from "@clerk/expo";
 import { useCallback, useMemo } from "react";
 
-export type UmUAuthUser = {
+export type RookAuthUser = {
   id: string;
   openId: string;
   name: string | null;
@@ -18,7 +18,7 @@ export function useAuth() {
   const { isLoaded, isSignedIn, signOut } = useClerkAuth();
   const { user: clerkUser } = useUser();
 
-  const user = useMemo<UmUAuthUser | null>(() => {
+  const user = useMemo<RookAuthUser | null>(() => {
     if (!isSignedIn || !clerkUser) return null;
     return {
       id: `clerk:${clerkUser.id}`,
