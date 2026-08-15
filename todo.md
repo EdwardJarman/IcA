@@ -87,3 +87,9 @@
 - [x] Add and validate a clear web Settings sign-out control
 - [x] Push the web Settings sign-out update to IcA
 - [x] Checkpoint the web Settings sign-out update
+- [x] Assess current navigation and the reference-inspired clarity gaps across web and mobile
+- [x] Redesign navigation so Library and Account are unmistakable and easy to reach
+- [x] Refine the key work surface for a calmer, clearer interaction flow
+- [ ] Run design and verification checks for the redesigned experience
+- [ ] Push the verified UmU redesign to IcA
+- [ ] Checkpoint the navigation and UX redesign

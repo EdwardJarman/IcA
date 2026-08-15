@@ -2,7 +2,7 @@
 
 ## Design intent
 
-Luma Workroom is a dark-first, calm AI workroom for managing specialized Bots. The design targets a 9:16 mobile portrait canvas and one-handed use, following standard iOS conventions for safe areas, readable hierarchy, large touch targets, sheets for secondary actions, and clear system feedback. The app should feel like a refined conversation product rather than an automation dashboard.
+UmU is a calm, Bot-first AI workroom for managing specialized Bots. The design targets a 9:16 mobile portrait canvas and one-handed use, following standard iOS conventions for safe areas, readable hierarchy, large touch targets, sheets for secondary actions, and clear system feedback. The app should feel like a refined conversation product rather than an automation dashboard.
 
 ## Brand and color choices
 
@@ -24,7 +24,7 @@ The brand uses an original **Luma** signal motif: a warm electric mint accent ag
 | Files | Project folders, Bot-private/shared labels, file search, previews, downloads, and message attachment links. |
 | Notifications | Completion, blockers, approvals, routines, and handoff updates that deep-link to their context. |
 | Search | Global search across Bots, messages, files, skills, routines, links, approvals, and settings. |
-| Settings | Theme, model/capability status, storage disclosure, privacy controls, exports, resets, and connection management. |
+| Account | First-class profile and session area for storage status, export, data deletion, and a clearly labeled Sign out control. |
 
 ## Key user flows
 
@@ -48,7 +48,7 @@ The user starts a group workroom, selects a lead and specialists, describes the 
 
 The Workroom screen uses a fixed, safe-area-aware top bar with the current Bot and connection state. The conversation occupies the middle scroll region. The composer sits above the home indicator, with a clear attach action and a primary send action. Bot switching, task details, skill references, and profile settings open in sheets or full-screen modals so the conversation remains the primary surface.
 
-The tab bar includes **Workroom**, **Bots**, **Library**, and **Activity**. Secondary sections such as files, routines, and approvals are surfaced within Library and Activity, avoiding an overcrowded mobile navigation model. On wide screens, these areas can expand into a side navigation without changing the information architecture.
+The navigation includes **Work**, **Bots**, **Library**, **Updates**, and **Account**. Library is now explicitly named rather than implied as “Space”; Account is a direct destination rather than a hidden Library sub-section. Files, routines, skills, search, and privacy remain organized inside Library, while decisions and recent work live in Updates. On wide screens, the same named destinations remain visible without changing the information architecture.
 
 ## Accessibility requirements
 
