@@ -3,13 +3,13 @@ import { describe, expect, it } from "vitest";
 import { buildLoginUrl } from "../lib/oauth-url";
 
 describe("provider-aware OAuth URLs", () => {
-  const base = { portalUrl: "https://identity.example.test", appId: "luma-app", redirectUri: "lumaworkroom://oauth/callback" };
+  const base = { portalUrl: "https://identity.example.test", appId: "rook-app", redirectUri: "rook://oauth/callback" };
 
   it("requests Google from the secure hosted sign-in flow", () => {
     const url = new URL(buildLoginUrl({ ...base, provider: "google" }));
     expect(url.pathname).toBe("/app-auth");
     expect(url.searchParams.get("provider")).toBe("google");
-    expect(url.searchParams.get("appId")).toBe("luma-app");
+    expect(url.searchParams.get("appId")).toBe("rook-app");
   });
 
   it("requests GitHub from the secure hosted sign-in flow", () => {

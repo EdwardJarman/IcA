@@ -2,11 +2,11 @@
 
 ## Design intent
 
-UmU is a calm, Bot-first AI workroom for managing specialized Bots. The design targets a 9:16 mobile portrait canvas and one-handed use, following standard iOS conventions for safe areas, readable hierarchy, large touch targets, sheets for secondary actions, and clear system feedback. The app should feel like a refined conversation product rather than an automation dashboard.
+Rook is a calm, Bot-first AI workroom for managing specialized Bots. The design targets a 9:16 mobile portrait canvas and one-handed use, following standard iOS conventions for safe areas, readable hierarchy, large touch targets, sheets for secondary actions, and clear system feedback. The app should feel like a refined conversation product rather than an automation dashboard.
 
 ## Brand and color choices
 
-The brand uses an original **Luma** signal motif: a warm electric mint accent against deep ink surfaces. The dark palette is built around **Ink #0B0D11**, **Graphite #151922**, **Elevated #1C2330**, **Cloud #F4F6F8**, **Mist #9AA4B2**, **Mint #77F3C4**, **Amber #F6C65B**, and **Coral #FF7B7B**. The light palette uses an off-white canvas with ink text and a slightly deeper mint accent. These colors provide clear state contrast without a busy or neon aesthetic.
+The Rook identity uses a clean, geometric signal motif: a warm electric mint accent against deep ink surfaces. The dark palette is built around **Ink #0B0D11**, **Graphite #151922**, **Elevated #1C2330**, **Cloud #F4F6F8**, **Mist #9AA4B2**, **Mint #77F3C4**, **Amber #F6C65B**, and **Coral #FF7B7B**. The light palette uses an off-white canvas with ink text and a slightly deeper mint accent. These colors provide clear state contrast without a busy or neon aesthetic.
 
 ## Screen list
 
@@ -30,7 +30,7 @@ The brand uses an original **Luma** signal motif: a warm electric mint accent ag
 
 ### Create a Bot and complete a task
 
-The user opens the Bot switcher, taps **New Bot**, selects a role template or starts from scratch, provides a name and goal, and confirms approval boundaries. The user then sends a natural-language task. Luma displays a short plan, starts the task, shows visible activity, and returns a result card with evidence, a generated artifact where applicable, and next steps.
+The user opens the Bot switcher, taps **New Bot**, selects a role template or starts from scratch, provides a name and goal, and confirms approval boundaries. The user then sends a natural-language task. Rook displays a short plan, starts the task, shows visible activity, and returns a result card with evidence, a generated artifact where applicable, and next steps.
 
 ### Review and approve a sensitive action
 

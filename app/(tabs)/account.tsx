@@ -2,7 +2,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { AccountControls } from "./library";
-import { palette } from "@/components/luma-primitives";
+import { palette } from "@/components/rook-primitives";
 import { ScreenContainer } from "@/components/screen-container";
 import { useWorkroom } from "@/lib/workroom-store";
 
@@ -18,7 +18,7 @@ export default function AccountScreen() {
           <View style={styles.headerCopy}>
             <Text style={styles.eyebrow}>ACCOUNT</Text>
             <Text style={styles.title}>Your space, on your terms.</Text>
-            <Text style={styles.detail}>Manage your UmU session, data, and workroom preferences in one predictable place.</Text>
+            <Text style={styles.detail}>Manage your Rook session, data, and workroom preferences in one predictable place.</Text>
           </View>
         </View>
         <AccountControls syncStatus={syncStatus} />
