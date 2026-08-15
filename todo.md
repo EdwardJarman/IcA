@@ -82,4 +82,4 @@
 - [x] Diagnose the deployed browser bundle’s Clerk key and notification module regressions
 - [x] Implement browser-safe runtime configuration and notification loading
 - [x] Validate the deployed-equivalent web bundle and push the repair to IcA
-- [ ] Checkpoint the browser-bundle regression repair
+- [x] Checkpoint the browser-bundle regression repair
