@@ -85,5 +85,5 @@
 - [x] Checkpoint the browser-bundle regression repair
 - [x] Inspect the existing web Settings account area and Clerk sign-out action
 - [x] Add and validate a clear web Settings sign-out control
-- [ ] Push the web Settings sign-out update to IcA
-- [ ] Checkpoint the web Settings sign-out update
+- [x] Push the web Settings sign-out update to IcA
+- [x] Checkpoint the web Settings sign-out update
