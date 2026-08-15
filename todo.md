@@ -96,6 +96,7 @@
 - [x] Audit all UmU and Luma user-facing product-name references
 - [x] Rebrand the app configuration, user interface, authentication copy, notifications, and assistant instructions to Rook
 - [x] Validate the Rook build, test suite, and naming consistency
-- [ ] Restore GitHub publication access without relying on the browser view
-- [ ] Publish and verify the final Rook repair on IcA
+- [x] Restore GitHub publication access without relying on the browser view
+- [x] Publish and verify the final Rook repair on IcA
+- [x] Push the verified Rook rebrand to IcA
 - [ ] Checkpoint the verified Rook rebrand
