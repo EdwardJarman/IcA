@@ -87,23 +87,15 @@
 - [x] Add and validate a clear web Settings sign-out control
 - [x] Push the web Settings sign-out update to IcA
 - [x] Checkpoint the web Settings sign-out update
-<<<<<<< HEAD
 - [x] Assess current navigation and the reference-inspired clarity gaps across web and mobile
 - [x] Redesign navigation so Library and Account are unmistakable and easy to reach
 - [x] Refine the key work surface for a calmer, clearer interaction flow
 - [x] Run design and verification checks for the redesigned experience
 - [x] Push the verified UmU redesign to IcA
 - [x] Checkpoint the navigation and UX redesign
-=======
-- [ ] Assess current navigation and the reference-inspired clarity gaps across web and mobile
-- [ ] Redesign navigation so Library and Account are unmistakable and easy to reach
-- [x] Refine the key work surface for a calmer, clearer interaction flow
-- [x] Run design and verification checks for the redesigned experience
-- [ ] Push the verified UmU redesign to IcA
-- [ ] Checkpoint the navigation and UX redesign
 - [x] Audit all UmU and Luma user-facing product-name references
 - [x] Rebrand the app configuration, user interface, authentication copy, notifications, and assistant instructions to Rook
-- [ ] Validate the Rook build, test suite, and naming consistency
-- [ ] Push the verified Rook rebrand to IcA
+- [x] Validate the Rook build, test suite, and naming consistency
+- [ ] Restore GitHub publication access without relying on the browser view
+- [ ] Publish and verify the final Rook repair on IcA
 - [ ] Checkpoint the verified Rook rebrand
->>>>>>> bc0d0c4 (feat: rename UmU to Rook)
