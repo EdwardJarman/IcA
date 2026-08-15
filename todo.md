@@ -45,3 +45,7 @@
 - [x] Rebuild UmU onboarding, Bot roster, and focused conversation surfaces with a clean, rounded flow
 - [x] Refine supporting screens and interaction feedback for the UmU visual system
 - [x] Validate and checkpoint the UmU redesign
+- [x] Restart and verify the UmU development server after preview unresponsiveness
+- [x] Identify the Expo web export output and configure Vercel deployment settings
+- [x] Verify the Vercel-targeted web build and restart the UmU development server
+- [ ] Checkpoint the deployment-readiness fix
