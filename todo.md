@@ -53,5 +53,5 @@
 - [x] Remove the active public-directory setting and validate a Vercel-compatible build
 - [x] Checkpoint the corrected Vercel project configuration
 - [x] Compare all current UmU workspace changes against the IcA main branch
-- [ ] Commit and push every remaining UmU project change to GitHub
-- [ ] Verify the remote IcA main branch matches the local workspace
+- [x] Commit and push every remaining UmU project change to GitHub
+- [x] Verify the remote IcA main branch matches the local workspace
