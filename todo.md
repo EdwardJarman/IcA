@@ -55,3 +55,7 @@
 - [x] Compare all current UmU workspace changes against the IcA main branch
 - [x] Commit and push every remaining UmU project change to GitHub
 - [x] Verify the remote IcA main branch matches the local workspace
+- [x] Diagnose the Vercel Metro SHA-1 failure for the NativeWind web cache
+- [x] Apply and validate a Vercel-safe static web export fix
+- [ ] Push the complete verified Vercel cache-build fix to IcA
+- [ ] Checkpoint the Vercel Metro repair
