@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { AccountControls } from "./library";
 import { palette } from "@/components/rook-primitives";
 import { ScreenContainer } from "@/components/screen-container";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { useDockScroll } from "@/lib/dock-visibility";
 import { useWorkroom } from "@/lib/workroom-store";
 
@@ -23,6 +24,7 @@ export default function AccountScreen() {
             <Text style={styles.detail}>Manage your Rook session, data, and workroom preferences in one predictable place.</Text>
           </View>
         </View>
+        <ThemeToggle />
         <AccountControls syncStatus={syncStatus} />
       </ScrollView>
     </ScreenContainer>

@@ -100,3 +100,9 @@
 - [x] Publish and verify the final Rook repair on IcA
 - [x] Push the verified Rook rebrand to IcA
 - [ ] Checkpoint the verified Rook rebrand
+- [x] Implement the supplied desktop sidebar for Rook web while retaining the mobile dock
+- [x] Add a user-controlled dark mode that persists across sessions
+- [x] Add the supplied Bloom visual to the right side of the left-aligned web sign-in and sign-up layouts
+- [x] Validate the responsive sidebar, dark mode, authentication layouts, and Vercel export
+- [ ] Publish the completed responsive Rook experience to IcA
+- [ ] Checkpoint the completed responsive Rook experience

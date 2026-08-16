@@ -1,14 +1,14 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { type ReactNode } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
 export const palette = {
   ink: "#17181B",
-  graphite: "#FFFFFF",
-  elevated: "#F6F6F7",
-  line: "#E7E7EA",
-  cloud: "#17181B",
-  mist: "#777982",
+  graphite: Platform.OS === "web" ? "var(--color-background)" : "#FFFFFF",
+  elevated: Platform.OS === "web" ? "var(--color-surface)" : "#F6F6F7",
+  line: Platform.OS === "web" ? "var(--color-border)" : "#E7E7EA",
+  cloud: Platform.OS === "web" ? "var(--color-foreground)" : "#17181B",
+  mist: Platform.OS === "web" ? "var(--color-muted)" : "#777982",
   mint: "#18B982",
   amber: "#B77912",
   coral: "#D65A5A",
