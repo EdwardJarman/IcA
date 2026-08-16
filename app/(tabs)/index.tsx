@@ -8,6 +8,7 @@ import { Avatar, EmptyState, IconButton, SectionTitle, StatusPill, palette } fro
 import { BotIdentityPicker } from "@/components/bot-identity-picker";
 import { ScreenContainer } from "@/components/screen-container";
 import { useRookNotifications } from "@/lib/rook-notifications";
+import { useDockScroll } from "@/lib/dock-visibility";
 import { useWorkroom, type TaskStatus, type WorkTask } from "@/lib/workroom-store";
 import { trpc } from "@/lib/trpc";
 import { approvalReason, fileSizeLabel, requiresApproval } from "@/lib/workroom-helpers";
@@ -30,6 +31,7 @@ export default function WorkroomScreen() {
   const [newBotIcon, setNewBotIcon] = useState("auto-awesome");
   const replyMutation = trpc.workroom.reply.useMutation();
   const { preferences: notificationPreferences, sendTaskAlert } = useRookNotifications();
+  const dockScroll = useDockScroll();
 
   const selectedBot = useMemo(() => bots.find((bot) => bot.id === selectedBotId) ?? bots[0], [bots, selectedBotId]);
   const visibleMessages = selectedBot ? messages.filter((message) => message.botId === selectedBot.id) : [];
@@ -114,7 +116,7 @@ export default function WorkroomScreen() {
           </View>
         ) : (
           <>
-            <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <ScrollView {...dockScroll} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.botRail}>{bots.map((bot) => <Pressable key={bot.id} accessibilityRole="button" accessibilityLabel={`Open ${bot.name}`} onPress={() => selectBot(bot.id)} style={({ pressed }) => [styles.botRailItem, pressed && styles.pressed]}><Avatar label={bot.avatar} color={bot.color} icon={bot.icon} size={45} /><Text numberOfLines={1} style={[styles.botRailName, bot.id === selectedBot.id && styles.botRailNameSelected]}>{bot.name}</Text></Pressable>)}</ScrollView>
               <View style={styles.conversationHead}><View><Text style={styles.conversationTitle}>{selectedBot.name}</Text><Text style={styles.conversationDetail}>{selectedBot.purpose}</Text></View><StatusPill label={selectedBot.status === "Working" ? "Working" : "Ready"} tone={selectedBot.status === "Working" ? "mint" : "muted"} /></View>
               {pendingApproval ? <Pressable accessibilityRole="button" onPress={() => router.navigate("/activity" as never)} style={({ pressed }) => [styles.approvalBanner, pressed && styles.pressed]}><MaterialIcons name="shield" size={18} color={palette.amber} /><View style={styles.approvalCopy}><Text style={styles.approvalTitle}>A decision is waiting</Text><Text style={styles.approvalDetail}>{pendingApproval.title}</Text></View><MaterialIcons name="chevron-right" size={20} color={palette.amber} /></Pressable> : null}

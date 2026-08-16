@@ -7,6 +7,7 @@ import * as Sharing from "expo-sharing";
 import { Avatar, EmptyState, IconButton, SectionTitle, StatusPill, palette } from "@/components/rook-primitives";
 import { ScreenContainer } from "@/components/screen-container";
 import { useAuth } from "@/hooks/use-auth";
+import { useDockScroll } from "@/lib/dock-visibility";
 import { useRookNotifications } from "@/lib/rook-notifications";
 import { useWorkroom, type Skill } from "@/lib/workroom-store";
 import { trpc } from "@/lib/trpc";
@@ -24,6 +25,7 @@ export default function LibraryScreen() {
   const [routineName, setRoutineName] = useState("");
   const [routineCadence, setRoutineCadence] = useState("");
   const [search, setSearch] = useState("");
+  const dockScroll = useDockScroll();
 
   const requireBot = () => { if (bots.length) return true; Alert.alert("Create a Bot first", "Skills and routines need a Bot owner. Create one from Workroom or Bots, then return here."); return false; };
   const searchResults = useMemo(() => { const query = search.trim().toLowerCase(); if (!query) return []; return [...bots.filter((item) => `${item.name} ${item.role} ${item.purpose}`.toLowerCase().includes(query)).map((item) => ({ type: "Bot", title: item.name, detail: item.role })), ...skills.filter((item) => `${item.name} ${item.description}`.toLowerCase().includes(query)).map((item) => ({ type: "Skill", title: item.name, detail: item.description })), ...routines.filter((item) => `${item.name} ${item.summary}`.toLowerCase().includes(query)).map((item) => ({ type: "Routine", title: item.name, detail: item.cadence })), ...files.filter((item) => `${item.name} ${item.owner}`.toLowerCase().includes(query)).map((item) => ({ type: "File", title: item.name, detail: `${item.scope} · ${item.owner}` }))]; }, [bots, files, routines, search, skills]);
@@ -32,7 +34,7 @@ export default function LibraryScreen() {
   const tabs: LibrarySection[] = ["Skills", "Routines", "Files", "Search", "Privacy"];
 
   return <ScreenContainer containerClassName="bg-background" className="flex-1" edges={["top", "left", "right"]}>
-    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+    <ScrollView {...dockScroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       <View style={styles.head}><View><Text style={styles.title}>Library</Text><Text style={styles.lead}>Add only the reusable work, files, and controls you need.</Text></View><IconButton icon={section === "Skills" || section === "Routines" ? "add" : "tune"} label="Library action" onPress={() => section === "Skills" ? requireBot() && setSkillOpen(true) : section === "Routines" ? requireBot() && setRoutineOpen(true) : Alert.alert("Library", "Choose a section to work with the content you have created.")} tone="mint" /></View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>{tabs.map((tab) => <Pressable key={tab} accessibilityRole="tab" accessibilityState={{ selected: section === tab }} onPress={() => setSection(tab)} style={({ pressed }) => [styles.tab, section === tab && styles.tabSelected, pressed && styles.pressed]}><Text style={[styles.tabText, section === tab && styles.tabTextSelected]}>{tab}</Text></Pressable>)}</ScrollView>
       {section === "Skills" ? <SkillsSection skills={skills} onCreate={() => requireBot() && setSkillOpen(true)} /> : null}

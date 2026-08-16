@@ -5,6 +5,7 @@ import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View 
 import { Avatar, EmptyState, IconButton, SectionTitle, StatusPill, palette } from "@/components/rook-primitives";
 import { BotIdentityPicker } from "@/components/bot-identity-picker";
 import { ScreenContainer } from "@/components/screen-container";
+import { useDockScroll } from "@/lib/dock-visibility";
 import { useWorkroom, type Bot } from "@/lib/workroom-store";
 
 export default function BotsScreen() {
@@ -17,6 +18,7 @@ export default function BotsScreen() {
   const [approvalRule, setApprovalRule] = useState("Ask me before anything external, irreversible, or sensitive.");
   const [color, setColor] = useState("#7563F5");
   const [icon, setIcon] = useState("auto-awesome");
+  const dockScroll = useDockScroll();
 
   const handleCreate = () => {
     if (!name.trim() || !role.trim() || !purpose.trim()) { Alert.alert("Finish your Bot", "Add a name, primary job, and working description before creating this Bot."); return; }
@@ -25,7 +27,7 @@ export default function BotsScreen() {
   };
 
   return <ScreenContainer containerClassName="bg-background" className="flex-1" edges={["top", "left", "right"]}>
-    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <ScrollView {...dockScroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.head}><View><Text style={styles.title}>Bots</Text><Text style={styles.lead}>{bots.length ? "A small team that stays close to the work." : "Make one teammate for the work you want to move forward."}</Text></View><IconButton icon="add" label="Create a Bot" onPress={() => setNewOpen(true)} tone="mint" /></View>
       {bots.length ? <><SectionTitle eyebrow="Your space" title="Your teammates" /><View style={styles.list}>{bots.map((bot) => <Pressable key={bot.id} accessibilityRole="button" onPress={() => { selectBot(bot.id); setOpenBot(bot); }} style={({ pressed }) => [styles.botRow, bot.id === selectedBotId && styles.botRowSelected, pressed && styles.pressed]}><Avatar label={bot.avatar} color={bot.color} icon={bot.icon} size={47} /><View style={styles.botCopy}><View style={styles.nameLine}><Text style={styles.botName}>{bot.name}</Text><Text style={styles.botTime}>{bot.lastActive}</Text></View><Text numberOfLines={1} style={styles.botMeta}>{bot.status === "Working" ? "Working now" : bot.role}</Text></View><MaterialIcons name="chevron-right" size={20} color={palette.mist} /></Pressable>)}</View><Pressable accessibilityRole="button" onPress={() => setNewOpen(true)} style={({ pressed }) => [styles.addAnother, pressed && styles.pressed]}><MaterialIcons name="add" size={18} color={palette.cloud} /><Text style={styles.addAnotherText}>Add another Bot</Text></Pressable></> : <View style={styles.emptyWrap}><EmptyState icon="person-add-alt-1" title="Your team starts here" detail="Begin with one clear job. Add another Bot only when the work naturally splits." action={<Pressable accessibilityRole="button" onPress={() => setNewOpen(true)} style={({ pressed }) => [styles.createButton, pressed && styles.pressed]}><Text style={styles.createButtonText}>Make a Bot</Text><MaterialIcons name="arrow-forward" size={18} color="#FFFFFF" /></Pressable>} /></View>}
     </ScrollView>

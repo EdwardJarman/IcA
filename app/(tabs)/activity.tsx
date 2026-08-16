@@ -3,15 +3,17 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Avatar, Divider, EmptyState, IconButton, SectionTitle, StatusPill, palette } from "@/components/rook-primitives";
 import { ScreenContainer } from "@/components/screen-container";
+import { useDockScroll } from "@/lib/dock-visibility";
 import { useWorkroom } from "@/lib/workroom-store";
 
 export default function ActivityScreen() {
   const { approvals, bots, activity, notifications, resolveApproval, markNotificationsRead } = useWorkroom();
   const pendingApprovals = approvals.filter((approval) => approval.state === "Pending");
   const unreadCount = notifications.filter((notification) => !notification.read).length;
+  const dockScroll = useDockScroll();
 
   return <ScreenContainer containerClassName="bg-background" className="flex-1" edges={["top", "left", "right"]}>
-    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <ScrollView {...dockScroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <View style={styles.head}><View><Text style={styles.title}>Updates</Text><Text style={styles.lead}>The moments where your work needs you, in one quiet place.</Text></View><IconButton icon="done-all" label="Mark notifications read" onPress={markNotificationsRead} tone={unreadCount ? "mint" : "default"} /></View>
       <SectionTitle eyebrow="Decisions" title={pendingApprovals.length ? `${pendingApprovals.length} need you` : "Nothing needs you"} />
       {pendingApprovals.length ? <View style={styles.cards}>{pendingApprovals.map((approval) => { const bot = bots.find((entry) => entry.id === approval.botId); return <View key={approval.id} style={styles.approvalCard}><View style={styles.approvalHead}><View style={styles.approvalIdentity}>{bot ? <Avatar label={bot.avatar} color={bot.color} size={36} /> : null}<View style={styles.approvalCopy}><Text style={styles.cardTitle}>{approval.title}</Text><Text style={styles.cardMeta}>{bot?.name ?? "Bot"} · {approval.createdAt}</Text></View></View><StatusPill label={`${approval.risk} risk`} tone="amber" /></View><Text style={styles.cardDetail}>{approval.detail}</Text><View style={styles.approvalActions}><Pressable accessibilityRole="button" onPress={() => resolveApproval(approval.id, "Declined")} style={({ pressed }) => [styles.declineButton, pressed && styles.pressed]}><Text style={styles.declineText}>Decline</Text></Pressable><Pressable accessibilityRole="button" onPress={() => resolveApproval(approval.id, "Approved")} style={({ pressed }) => [styles.approveButton, pressed && styles.pressed]}><MaterialIcons name="check" size={17} color="#FFFFFF" /><Text style={styles.approveText}>Approve</Text></Pressable></View></View>; })}</View> : <EmptyState icon="verified-user" title="Nothing needs a decision" detail="When a Bot reaches a pause point you set, its request will appear here." />}

@@ -4,15 +4,17 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { AccountControls } from "./library";
 import { palette } from "@/components/rook-primitives";
 import { ScreenContainer } from "@/components/screen-container";
+import { useDockScroll } from "@/lib/dock-visibility";
 import { useWorkroom } from "@/lib/workroom-store";
 
 /** A direct home for profile, data, and session controls. */
 export default function AccountScreen() {
   const { syncStatus } = useWorkroom();
+  const dockScroll = useDockScroll();
 
   return (
     <ScreenContainer containerClassName="bg-background" className="flex-1" edges={["top", "left", "right"]}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView {...dockScroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={styles.iconWrap}><MaterialIcons name="account-circle" size={26} color={palette.cloud} /></View>
           <View style={styles.headerCopy}>
