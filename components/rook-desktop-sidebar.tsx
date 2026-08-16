@@ -16,7 +16,7 @@ export function RookDesktopSidebar({ state, descriptors, navigation }: BottomTab
   return (
     <View style={styles.sidebar} accessibilityRole="tablist">
       <View style={styles.brandRow}>
-        <View style={styles.brandMark}><MaterialIcons name="auto-awesome" size={19} color="#FFFFFF" /></View>
+        <View style={styles.brandMark}><MaterialIcons name="menu" size={19} color="#FFFFFF" /></View>
         <Text style={styles.brand}>Rook</Text>
       </View>
       <Pressable accessibilityRole="button" accessibilityLabel="Create a Bot" onPress={() => navigation.navigate("bots")} style={({ pressed }) => [styles.createButton, pressed && styles.pressed]}>
@@ -36,7 +36,7 @@ export function RookDesktopSidebar({ state, descriptors, navigation }: BottomTab
           };
           return (
             <Pressable key={route.key} accessibilityRole="tab" accessibilityLabel={descriptor.options.tabBarAccessibilityLabel ?? item.label} accessibilityState={{ selected: isFocused }} onPress={onPress} onLongPress={() => navigation.emit({ type: "tabLongPress", target: route.key })} style={({ pressed }) => [styles.navItem, isFocused && styles.navItemActive, pressed && styles.pressed]}>
-              <MaterialIcons name={item.icon} size={20} color={isFocused ? "#70E5BE" : "#A8AFBA"} />
+              <MaterialIcons name={item.icon} size={20} color={isFocused ? "#70E5BE" : "#FFFFFF"} />
               <Text style={[styles.navLabel, isFocused && styles.navLabelActive]}>{item.label}</Text>
               {isFocused ? <View style={styles.activeRail} /> : null}
             </Pressable>
@@ -52,17 +52,17 @@ export function RookDesktopSidebar({ state, descriptors, navigation }: BottomTab
 }
 
 const styles = StyleSheet.create({
-  sidebar: { position: "absolute", top: 0, bottom: 0, left: 0, width: 264, zIndex: 20, paddingHorizontal: 14, paddingTop: 22, paddingBottom: 18, backgroundColor: "#101114", borderRightWidth: 1, borderRightColor: "#292B31" },
-  brandRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 8, marginBottom: 22 },
+  sidebar: { position: "absolute", top: 0, bottom: 0, left: 0, width: 264, zIndex: 20, paddingHorizontal: 14, paddingTop: 28, paddingBottom: 22, backgroundColor: "#0B0D11", borderRightWidth: 1, borderRightColor: "#292B31" },
+  brandRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 8, marginBottom: 28 },
   brandMark: { width: 33, height: 33, borderRadius: 11, alignItems: "center", justifyContent: "center", backgroundColor: "#7563F5" },
   brand: { color: "#F7F8FB", fontSize: 20, fontWeight: "900", letterSpacing: -0.7 },
   createButton: { minHeight: 43, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#70E5BE", borderRadius: 13, marginBottom: 25 },
-  createText: { color: "#0F1013", fontSize: 13, fontWeight: "900" },
-  sectionLabel: { color: "#6D737E", fontSize: 10, fontWeight: "900", letterSpacing: 1.1, paddingHorizontal: 10, marginBottom: 8 },
-  navList: { gap: 4 },
-  navItem: { minHeight: 46, flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 12, paddingHorizontal: 12 },
+  createText: { color: "#FFFFFF", fontSize: 13, fontWeight: "900" },
+  sectionLabel: { color: "#FFFFFF", fontSize: 10, fontWeight: "900", letterSpacing: 1.1, paddingHorizontal: 10, marginBottom: 8 },
+  navList: { gap: 6 },
+  navItem: { minHeight: 52, flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 12, paddingHorizontal: 12 },
   navItemActive: { backgroundColor: "#1F2228" },
-  navLabel: { flex: 1, color: "#A8AFBA", fontSize: 14, fontWeight: "700" },
+  navLabel: { flex: 1, color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
   navLabelActive: { color: "#F6F7FA", fontWeight: "900" },
   activeRail: { width: 4, height: 18, borderRadius: 3, backgroundColor: "#70E5BE" },
   footer: { marginTop: "auto", gap: 14 },
