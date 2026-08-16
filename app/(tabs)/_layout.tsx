@@ -1,5 +1,6 @@
 import { Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { StyleSheet, View } from "react-native";
 
 import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -9,69 +10,115 @@ import { useColors } from "@/hooks/use-colors";
 export default function TabLayout() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const bottomPadding = Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8);
-  const tabBarHeight = 56 + bottomPadding;
+  const dockBottom = Platform.OS === "web" ? 18 : Math.max(insets.bottom, 12);
+  const sceneBottomInset = 88 + dockBottom;
+
+  const dockIcon = (name: Parameters<typeof IconSymbol>[0]["name"]) => ({ color, focused }: { color: string; focused: boolean }) => (
+    <View style={styles.iconWrap}>
+      <IconSymbol size={24} name={name} color={color} />
+      <View style={[styles.activeDot, focused && styles.activeDotVisible]} />
+    </View>
+  );
 
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: colors.tint,
-        tabBarInactiveTintColor: colors.muted,
+        tabBarInactiveTintColor: "#B9BEC8",
         headerShown: false,
         tabBarButton: HapticTab,
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "700",
-          marginTop: 1,
-        },
-        tabBarItemStyle: {
-          paddingVertical: 2,
-        },
+        tabBarShowLabel: false,
+        sceneStyle: { paddingBottom: sceneBottomInset },
         tabBarStyle: {
-          paddingTop: 8,
-          paddingBottom: bottomPadding,
-          height: tabBarHeight + 6,
-          backgroundColor: colors.background,
-          borderTopColor: colors.border,
-          borderTopWidth: 0.5,
+          ...styles.dock,
+          bottom: dockBottom,
         },
+        tabBarItemStyle: styles.dockItem,
+        tabBarActiveBackgroundColor: "#343942",
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: "Work",
-          tabBarIcon: ({ color }) => <IconSymbol size={25} name="message.fill" color={color} />,
+          tabBarAccessibilityLabel: "Work",
+          tabBarIcon: dockIcon("message.fill"),
         }}
       />
       <Tabs.Screen
         name="bots"
         options={{
           title: "Bots",
-          tabBarIcon: ({ color }) => <IconSymbol size={25} name="person.2.fill" color={color} />,
+          tabBarAccessibilityLabel: "Bots",
+          tabBarIcon: dockIcon("person.2.fill"),
         }}
       />
       <Tabs.Screen
         name="library"
         options={{
           title: "Library",
-          tabBarIcon: ({ color }) => <IconSymbol size={25} name="books.vertical.fill" color={color} />,
+          tabBarAccessibilityLabel: "Library",
+          tabBarIcon: dockIcon("books.vertical.fill"),
         }}
       />
       <Tabs.Screen
         name="activity"
         options={{
           title: "Updates",
-          tabBarIcon: ({ color }) => <IconSymbol size={25} name="bell.fill" color={color} />,
+          tabBarAccessibilityLabel: "Updates",
+          tabBarIcon: dockIcon("bell.fill"),
         }}
       />
       <Tabs.Screen
         name="account"
         options={{
           title: "Account",
-          tabBarIcon: ({ color }) => <IconSymbol size={25} name="person.crop.circle" color={color} />,
+          tabBarAccessibilityLabel: "Account",
+          tabBarIcon: dockIcon("person.crop.circle"),
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  dock: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    height: 66,
+    paddingHorizontal: 6,
+    paddingVertical: 7,
+    backgroundColor: "#17191D",
+    borderTopWidth: 1,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.16)",
+    borderRadius: 25,
+    elevation: 12,
+    shadowColor: "#000000",
+    shadowOpacity: 0.32,
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 18,
+  },
+  dockItem: {
+    borderRadius: 18,
+    marginHorizontal: 2,
+  },
+  iconWrap: {
+    height: 43,
+    minWidth: 35,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+  },
+  activeDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    opacity: 0,
+    backgroundColor: "#77F3C4",
+  },
+  activeDotVisible: {
+    opacity: 1,
+  },
+});
