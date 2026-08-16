@@ -24,7 +24,7 @@ export default function SignInScreen() {
   };
 
   return (
-    <ScreenContainer edges={["top", "bottom", "left", "right"]} containerClassName="bg-background" className="flex-1">
+    <ScreenContainer edges={["top", "bottom", "left", "right"]} containerClassName="bg-black" className="flex-1">
       <View style={styles.screen}>
         <View style={styles.orbit}>
           <View style={styles.dotOne} />
@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
   wordmark: { color: palette.cloud, fontSize: 20, letterSpacing: -0.8, fontWeight: "900", marginBottom: 8 },
   title: { color: palette.cloud, fontSize: 29, lineHeight: 35, letterSpacing: -0.9, fontWeight: "900", textAlign: "center" },
   detail: { color: palette.mist, textAlign: "center", fontSize: 14, lineHeight: 21, marginTop: 11, maxWidth: 335 },
-  actions: { width: "100%", maxWidth: 370, gap: 10, marginTop: 30 },
+  actions: { width: "100%", maxWidth: 300, gap: 10, marginTop: 30 },
   providerButton: { height: 54, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, borderRadius: 18, backgroundColor: palette.elevated, borderWidth: 1, borderColor: palette.line },
   providerText: { color: palette.cloud, fontSize: 14, fontWeight: "900" },
   legal: { color: palette.mist, fontSize: 10, lineHeight: 15, textAlign: "center", marginTop: 17, maxWidth: 335 },
