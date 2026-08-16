@@ -17,7 +17,7 @@ function RookTabs() {
   const insets = useSafeAreaInsets();
   const { dockVisible } = useDockVisibility();
   const dockBottom = Platform.OS === "web" ? 18 : Math.max(insets.bottom, 12);
-  const sceneBottomInset = dockVisible ? 82 + dockBottom : 0;
+  const sceneBottomInset = dockVisible ? 94 + dockBottom : 0;
 
   return (
     <Tabs screenOptions={{ headerShown: false, sceneStyle: { paddingBottom: sceneBottomInset } }} tabBar={(props) => <RookFloatingDock {...props} />}>

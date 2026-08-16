@@ -47,7 +47,7 @@ export function RookFloatingDock({ state, descriptors, navigation }: BottomTabBa
             onPress={onPress}
             style={({ pressed }) => [styles.item, isFocused && styles.itemActive, pressed && styles.itemPressed]}
           >
-            <IconSymbol size={24} name={icon} color={isFocused ? "#77F3C4" : "#B9BEC8"} />
+            <IconSymbol size={isFocused ? 29 : 27} name={icon} color={isFocused ? "#70E5BE" : "#D1D3DC"} />
             <View style={[styles.activeDot, isFocused && styles.activeDotVisible]} />
           </Pressable>
         );
@@ -59,34 +59,44 @@ export function RookFloatingDock({ state, descriptors, navigation }: BottomTabBa
 const styles = StyleSheet.create({
   dock: {
     position: "absolute",
-    left: 16,
-    right: 16,
-    height: 66,
+    left: 14,
+    right: 14,
+    height: 78,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 6,
-    paddingVertical: 7,
-    backgroundColor: "#17191D",
+    paddingHorizontal: 5,
+    paddingVertical: 4,
+    backgroundColor: "#1A1B1F",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.16)",
-    borderRadius: 25,
-    elevation: 12,
+    borderColor: "#3A3C42",
+    borderRadius: 29,
+    elevation: 16,
     shadowColor: "#000000",
-    shadowOpacity: 0.32,
-    shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 18,
+    shadowOpacity: 0.42,
+    shadowOffset: { width: 0, height: 12 },
+    shadowRadius: 22,
   },
   item: {
     flex: 1,
-    height: 52,
+    height: 68,
     alignItems: "center",
     justifyContent: "center",
-    gap: 3,
-    borderRadius: 18,
+    borderRadius: 25,
   },
-  itemActive: { backgroundColor: "#343942" },
-  itemPressed: { opacity: 0.72, transform: [{ scale: 0.96 }] },
-  activeDot: { width: 4, height: 4, borderRadius: 2, opacity: 0, backgroundColor: "#77F3C4" },
+  itemActive: {
+    flex: 1.32,
+    backgroundColor: "#343A45",
+  },
+  itemPressed: { opacity: 0.8, transform: [{ scale: 0.97 }] },
+  activeDot: {
+    position: "absolute",
+    bottom: 9,
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    opacity: 0,
+    backgroundColor: "#70E5BE",
+  },
   activeDotVisible: { opacity: 1 },
 });
