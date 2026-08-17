@@ -1,37 +1,38 @@
-const WHITE = "#FFFFFF";
+const INK = "#191C22";
+const MUTED = "#565E6B";
 
 /**
- * Shared high-contrast styling + localization overrides for Clerk's web sign-in
- * and sign-up cards so everything is branded as "Rook" instead of the default
- * Clerk application name, and so the Google / GitHub buttons read naturally.
+ * Shared styling + localization overrides for Clerk's web sign-in and sign-up
+ * cards so everything reads as "Rook" on the light auth canvas: ink text on
+ * warm paper, green primary actions, and quiet outlined inputs.
  */
 export const authWebAppearance = {
   variables: {
-    colorPrimary: "#70E5BE",
-    colorPrimaryForeground: WHITE,
-    colorBackground: "#15161A",
-    colorForeground: WHITE,
-    colorDanger: "#FF7B7B",
-    colorSuccess: "#77F3C4",
-    colorWarning: "#F6C65B",
-    colorMuted: "#9AA4B2",
-    colorMutedForeground: WHITE,
-    colorInput: "#050506",
-    colorInputForeground: WHITE,
-    colorNeutral: WHITE,
-    colorTextOnPrimaryBackground: WHITE,
-    colorTextSecondary: "#9AA4B2",
+    colorPrimary: "#0E7C59",
+    colorPrimaryForeground: "#FFFFFF",
+    colorBackground: "#F7F7F4",
+    colorForeground: INK,
+    colorDanger: "#C03B3B",
+    colorSuccess: "#0E7C59",
+    colorWarning: "#9A6700",
+    colorMuted: "#E5E4DE",
+    colorMutedForeground: MUTED,
+    colorInput: "#FFFFFF",
+    colorInputForeground: INK,
+    colorNeutral: INK,
+    colorTextOnPrimaryBackground: "#FFFFFF",
+    colorTextSecondary: MUTED,
     borderRadius: "0.8rem",
   },
   elements: {
-    backLink: { color: WHITE },
-    headerBackLink: { color: WHITE },
-    footerActionLink: { color: WHITE },
-    footerPagesLink: { color: WHITE },
-    formFieldAction: { color: WHITE },
-    formResendCodeLink: { color: WHITE },
-    identityPreviewEditButton: { color: WHITE },
-    formButtonPrimary: { color: WHITE },
+    backLink: { color: MUTED },
+    headerBackLink: { color: MUTED },
+    footerActionLink: { color: "#0E7C59" },
+    footerPagesLink: { color: MUTED },
+    formFieldAction: { color: "#0E7C59" },
+    formResendCodeLink: { color: "#0E7C59" },
+    identityPreviewEditButton: { color: "#0E7C59" },
+    formButtonPrimary: { color: "#FFFFFF" },
     // Hide Clerk's "Secured by Clerk" footer badge where it appears.
     footer: { display: "none" as const },
     footerAction: { display: "none" as const },
@@ -58,31 +59,37 @@ export const authWebAppearance = {
     },
     socialButtonsIconButton: {
       height: "2.75rem",
+      width: "2.75rem",
       borderRadius: "0.75rem",
-      border: "1px solid rgba(255,255,255,0.18)",
-      backgroundColor: "#050506",
+      border: "1px solid #D9D8D1",
+      backgroundColor: "#FFFFFF",
     },
     socialButtonsBlockButton: {
       height: "2.75rem",
       borderRadius: "0.75rem",
-      border: "1px solid rgba(255,255,255,0.18)",
-      backgroundColor: "#050506",
-      color: WHITE,
+      border: "1px solid #D9D8D1",
+      backgroundColor: "#FFFFFF",
+      color: INK,
       fontSize: "0.9rem",
-      fontWeight: "700",
+      fontWeight: "650",
     },
     dividerLine: {
-      backgroundColor: "rgba(255,255,255,0.18)",
+      backgroundColor: "#E5E4DE",
     },
     dividerText: {
-      color: "#9AA4B2",
+      color: MUTED,
     },
     formFieldInput: {
       height: "2.75rem",
       borderRadius: "0.75rem",
+      border: "1px solid #D9D8D1",
+    },
+    formFieldInputFocused: {
+      border: "1px solid #0E7C59",
+      boxShadow: "0 0 0 3px rgba(14, 124, 89, 0.12)",
     },
     formButtonReset: {
-      color: WHITE,
+      color: MUTED,
     },
   },
   layout: {

@@ -54,9 +54,9 @@ function SessionNavigator() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#FBFAF7", gap: 12 }}>
-        <ActivityIndicator color="#17181B" />
-        <Text style={{ color: "#777982", fontSize: 13 }}>Checking your secure session…</Text>
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#F7F7F4", gap: 12 }}>
+        <ActivityIndicator color="#191C22" />
+        <Text style={{ color: "#565E6B", fontSize: 13 }}>Checking your secure session…</Text>
       </View>
     );
   }

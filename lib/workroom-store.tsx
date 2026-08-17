@@ -20,7 +20,7 @@ type SyncStatus = "Connecting" | "Synced" | "Saving" | "Offline changes kept loc
 type WorkroomContextValue = { ready: boolean; onboardingComplete: boolean; selectedBotId: string; bots: Bot[]; messages: WorkMessage[]; tasks: WorkTask[]; skills: Skill[]; routines: Routine[]; approvals: Approval[]; files: WorkFile[]; notifications: WorkNotification[]; activity: Activity[]; syncStatus: SyncStatus; selectBot: (id: string) => void; createBot: (values: BotInput) => Bot; updateBotStatus: (id: string, status: Bot["status"]) => void; addMessage: (message: Omit<WorkMessage, "id" | "createdAt">) => void; addTask: (task: Omit<WorkTask, "id" | "startedAt">) => WorkTask; updateTaskStatus: (id: string, status: TaskStatus, nextAction?: string) => void; addSkill: (skill: Omit<Skill, "id">) => void; addApproval: (approval: Omit<Approval, "id" | "createdAt" | "state">) => void; addRoutine: (routine: Omit<Routine, "id">) => void; toggleRoutine: (id: string) => void; resolveApproval: (id: string, state: "Approved" | "Declined") => void; addFile: (file: Omit<WorkFile, "id" | "updatedAt">) => void; markNotificationsRead: () => void; addActivity: (entry: Omit<Activity, "id" | "createdAt">) => void; completeOnboarding: () => void; clearWorkroom: () => void };
 
 const STORAGE_KEY_PREFIX = "rook-local-fallback-v1";
-const BOT_COLORS = ["#7563F5", "#198EDE", "#18B982", "#DF8D19", "#D95D78", "#8E6F47"];
+const BOT_COLORS = ["#0E7C59", "#2563EB", "#7563F5", "#DF8D19", "#D95D78", "#5B7086"];
 const WorkroomContext = createContext<WorkroomContextValue | undefined>(undefined);
 const makeId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 const timeNow = () => new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });

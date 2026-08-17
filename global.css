@@ -2,22 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Ensure the entire web page matches the app's dark background so there is never
-   a white flash or a thin white line at the top of the viewport before React Native
-   Web mounts or between navigations. */
+/* The page matches the app canvas so there is never a white flash or a stray
+   colored line at the viewport edge before React Native Web mounts. */
 html,
 body,
 #root {
   margin: 0;
   padding: 0;
-  background-color: #0B0D11;
-  color: #F4F6F8;
+  background-color: #f7f7f4;
+  color: #191c22;
   min-height: 100%;
 }
 
-:root[data-theme="light"] html,
-:root[data-theme="light"] body,
-:root[data-theme="light"] #root {
-  background-color: #F6F7F8;
-  color: #11151C;
+:root[data-theme="dark"] html,
+:root[data-theme="dark"] body,
+:root[data-theme="dark"] #root {
+  background-color: #0a0c10;
+  color: #f1f3f6;
+}
+
+/* Keep native web form controls from injecting their own colors. */
+input,
+textarea {
+  font: inherit;
 }
