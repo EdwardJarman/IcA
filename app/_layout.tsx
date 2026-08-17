@@ -24,6 +24,7 @@ import { createTRPCClient, trpc } from "@/lib/trpc";
 import { WorkroomProvider } from "@/lib/workroom-store";
 import { useAuth } from "@/hooks/use-auth";
 import { NotificationNavigationObserver } from "@/components/notification-navigation";
+import { authWebAppearance, authWebLocalization } from "@/constants/auth-web";
 
 // Expo only inlines EXPO_PUBLIC_* values when referenced directly. The Vercel
 // build wrapper maps CLERK_PUBLISHABLE_KEY to this value before static export.
@@ -130,8 +131,14 @@ function RookApplication() {
 }
 
 export default function RootLayout() {
+  // Apply Rook-branded localization + appearance to the web Clerk components.
+  // On native these props are harmlessly ignored by @clerk/expo.
+  const clerkProps = Platform.OS === "web"
+    ? { appearance: authWebAppearance, localization: authWebLocalization }
+    : undefined;
+
   return (
-    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache} {...(clerkProps as object)}>
       <RookApplication />
     </ClerkProvider>
   );
