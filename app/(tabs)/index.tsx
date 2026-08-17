@@ -537,66 +537,88 @@ export default function WorkroomScreen() {
               )}
             </ScrollView>
 
-            {/* Composer — dark rounded command bar. */}
+            {/* Composer — a calm, minimal capsule above the home indicator. */}
             <View
               style={{
                 backgroundColor: colors.canvas,
-                paddingHorizontal: 18,
-                paddingTop: 12,
-                paddingBottom: 16,
+                paddingHorizontal: 14,
+                paddingTop: 8,
+                paddingBottom: 10,
               }}
             >
               <View
                 style={{
-                  minHeight: 144,
-                  borderRadius: 31,
+                  flexDirection: "row",
+                  alignItems: "flex-end",
+                  gap: 6,
+                  borderRadius: 26,
                   borderWidth: 1,
-                  borderColor: "#595B65",
-                  backgroundColor: "#1D1E23",
-                  paddingHorizontal: 20,
-                  paddingTop: 16,
-                  paddingBottom: 12,
-                  maxWidth: 980,
+                  borderColor: colors.line,
+                  backgroundColor: colors.surface,
+                  paddingLeft: 6,
+                  paddingRight: 6,
+                  paddingVertical: 6,
+                  maxWidth: 760,
                   width: "100%",
                   alignSelf: "center",
-                  shadowColor: "#000000",
-                  shadowOpacity: 0.16,
-                  shadowRadius: 12,
-                  shadowOffset: { width: 0, height: 5 },
                 }}
               >
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Attach file"
+                  onPress={handleAttach}
+                  style={({ pressed }) => [
+                    {
+                      width: 36,
+                      height: 36,
+                      borderRadius: 18,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      opacity: pressed ? 0.55 : 1,
+                    },
+                  ]}
+                >
+                  <MaterialIcons name="add" size={22} color={colors.textFaint} />
+                </Pressable>
                 <TextInput
                   value={composer}
                   onChangeText={setComposer}
-                  placeholder="Type your message here…"
-                  placeholderTextColor="#9A9CA8"
+                  placeholder={`Message ${selectedBot.name}`}
+                  placeholderTextColor={colors.textFaint}
                   multiline
                   style={{
                     flex: 1,
-                    minHeight: 56,
-                    maxHeight: 116,
-                    color: "#F4F5F7",
-                    fontSize: 19,
-                    lineHeight: 25,
-                    paddingTop: 2,
-                    paddingBottom: 6,
-                    textAlignVertical: "top",
+                    minHeight: 36,
+                    maxHeight: 108,
+                    color: colors.text,
+                    fontSize: 15.5,
+                    lineHeight: 21,
+                    paddingTop: Platform.OS === "ios" ? 8 : 7,
+                    paddingBottom: 7,
+                    paddingHorizontal: 4,
+                    textAlignVertical: "center",
                   }}
                   accessibilityLabel={`Message ${selectedBot.name}`}
                 />
-                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-                    <Pressable accessibilityRole="button" accessibilityLabel="Attach file" onPress={handleAttach} style={({ pressed }) => [{ width: 42, height: 42, borderRadius: 18, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.6 : 1 }]}><MaterialIcons name="attach-file" size={27} color="#AEB1BD" /></Pressable>
-                    <View style={{ width: 42, height: 42, borderRadius: 18, alignItems: "center", justifyContent: "center" }}><MaterialIcons name="language" size={25} color="#AEB1BD" /></View>
-                    <View style={{ width: 1, height: 32, backgroundColor: "#666875", marginHorizontal: 3 }} />
-                    <View style={{ width: 42, height: 42, borderRadius: 18, alignItems: "center", justifyContent: "center" }}><MaterialIcons name="settings" size={25} color="#AEB1BD" /></View>
-                    <View style={{ width: 1, height: 32, backgroundColor: "#666875", marginHorizontal: 3 }} />
-                    <View style={{ width: 42, height: 42, borderRadius: 18, alignItems: "center", justifyContent: "center" }}><MaterialIcons name="folder-open" size={25} color="#AEB1BD" /></View>
-                  </View>
-                  <Pressable accessibilityRole="button" accessibilityLabel={canSend ? "Send message" : "Message input ready"} onPress={() => void handleSend()} disabled={replyMutation.isPending} style={({ pressed }) => [{ width: 58, height: 58, borderRadius: 29, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center", opacity: replyMutation.isPending ? 0.6 : pressed ? 0.78 : 1 }]}>
-                    <MaterialIcons name={canSend ? "arrow-upward" : "keyboard-voice"} size={27} color="#14151A" />
-                  </Pressable>
-                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Send message"
+                  onPress={() => void handleSend()}
+                  disabled={!canSend}
+                  style={({ pressed }) => [
+                    {
+                      width: 36,
+                      height: 36,
+                      borderRadius: 18,
+                      backgroundColor: canSend ? colors.ink : colors.surfaceAlt,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      opacity: pressed && canSend ? 0.75 : 1,
+                    },
+                  ]}
+                >
+                  <MaterialIcons name="arrow-upward" size={19} color={canSend ? colors.onInk : colors.textFaint} />
+                </Pressable>
               </View>
             </View>
           </>
