@@ -25,6 +25,7 @@ import { WorkroomProvider } from "@/lib/workroom-store";
 import { useAuth } from "@/hooks/use-auth";
 import { NotificationNavigationObserver } from "@/components/notification-navigation";
 import { authWebAppearance, authWebLocalization } from "@/constants/auth-web";
+import { useRookTheme } from "@/lib/ui";
 
 // Expo only inlines EXPO_PUBLIC_* values when referenced directly. The Vercel
 // build wrapper maps CLERK_PUBLISHABLE_KEY to this value before static export.
@@ -43,6 +44,7 @@ function SessionNavigator() {
   const router = useRouter();
   const segments = useSegments();
   const { loading, isAuthenticated } = useAuth();
+  const { colors } = useRookTheme();
 
   useEffect(() => {
     if (loading) return;
@@ -54,9 +56,9 @@ function SessionNavigator() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#F7F7F4", gap: 12 }}>
-        <ActivityIndicator color="#191C22" />
-        <Text style={{ color: "#565E6B", fontSize: 13 }}>Checking your secure session…</Text>
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.canvas, gap: 12 }}>
+        <ActivityIndicator color={colors.text} />
+        <Text style={{ color: colors.textSoft, fontSize: 13 }}>Checking your secure session…</Text>
       </View>
     );
   }

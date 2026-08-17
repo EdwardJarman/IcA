@@ -284,7 +284,7 @@ export default function WorkroomScreen() {
                   justifyContent: "center",
                 }}
               >
-                <MaterialIcons name="castle" size={17} color={colors.onInk} />
+                <Text style={{ color: colors.onInk, fontSize: 16, fontWeight: "800" }}>R</Text>
               </View>
               <Text style={{ color: colors.text, fontSize: 16, fontWeight: "700", letterSpacing: -0.3 }}>Rook</Text>
             </View>
@@ -332,7 +332,7 @@ export default function WorkroomScreen() {
                 marginBottom: 26,
               }}
             >
-              <MaterialIcons name="castle" size={34} color={colors.onInk} />
+              <Text style={{ color: colors.onInk, fontSize: 34, fontWeight: "800" }}>R</Text>
             </View>
             <Text style={{ color: colors.text, fontSize: 26, lineHeight: 32, fontWeight: "700", letterSpacing: -0.8, textAlign: "center" }}>
               Start with one good Bot.

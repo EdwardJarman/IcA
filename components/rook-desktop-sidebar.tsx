@@ -3,7 +3,6 @@ import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useMemo, useState, type ComponentProps } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { Avatar } from "@/components/rook-primitives";
 import { useAuth } from "@/hooks/use-auth";
 import { tint, useRookTheme } from "@/lib/ui";
 
@@ -89,7 +88,7 @@ export function RookDesktopSidebar({ state, descriptors, navigation }: BottomTab
               justifyContent: "center",
             }}
           >
-            <MaterialIcons name="castle" size={16} color={colors.onInk} />
+            <Text style={{ color: colors.onInk, fontSize: 15, fontWeight: "800" }}>R</Text>
           </View>
           <Text style={{ color: colors.text, fontSize: 15.5, fontWeight: "700", letterSpacing: -0.3 }}>Rook</Text>
         </View>
@@ -148,17 +147,30 @@ export function RookDesktopSidebar({ state, descriptors, navigation }: BottomTab
             onHoverOut={() => setHoveredKey((current) => (current === "account-chip" ? null : current))}
             style={({ pressed }) => [
               styles.account,
-              hoveredKey === "account-chip" && { backgroundColor: colors.surfaceAlt },
+              { backgroundColor: hoveredKey === "account-chip" ? colors.surfaceAlt : colors.surface },
               pressed && { opacity: 0.72 },
             ]}
           >
-            <Avatar label={displayName} color={colors.accent} size={30} />
+            <View style={{
+              width: 32,
+              height: 32,
+              borderRadius: 11,
+              backgroundColor: tint(colors.accent, dark ? 0.24 : 0.13),
+              alignItems: "center",
+              justifyContent: "center",
+              borderWidth: 1,
+              borderColor: tint(colors.accent, dark ? 0.4 : 0.26),
+            }}>
+              <Text style={{ color: colors.accent, fontSize: 14, fontWeight: "700", letterSpacing: -0.2 }}>
+                {displayName.slice(0, 1).toUpperCase()}
+              </Text>
+            </View>
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text numberOfLines={1} style={{ color: colors.text, fontSize: 13.5, fontWeight: "600", letterSpacing: -0.1 }}>
+              <Text numberOfLines={1} style={{ color: colors.text, fontSize: 13, fontWeight: "600", letterSpacing: -0.1 }}>
                 {displayName}
               </Text>
               {user?.email ? (
-                <Text numberOfLines={1} style={{ color: colors.textFaint, fontSize: 11.5, marginTop: 1.5 }}>
+                <Text numberOfLines={1} style={{ color: colors.textFaint, fontSize: 11, marginTop: 1 }}>
                   {user.email}
                 </Text>
               ) : null}
@@ -183,7 +195,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingTop: 12,
     paddingHorizontal: 12,
-    paddingBottom: 10,
+    paddingBottom: 14,
   },
   brand: {
     minHeight: 44,
@@ -218,8 +230,9 @@ const styles = StyleSheet.create({
     minHeight: 46,
     flexDirection: "row",
     alignItems: "center",
-    gap: 10.5,
-    paddingHorizontal: 8,
+    gap: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     borderRadius: 14,
   },
 });
