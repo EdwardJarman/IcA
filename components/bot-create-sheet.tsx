@@ -30,15 +30,9 @@ const DEFAULT_APPROVAL =
 type Step = 1 | 2 | 3;
 
 const STEP_COPY: Record<
-  Step,
+  2 | 3,
   { eyebrow: string; title: string; detail: string }
 > = {
-  1: {
-    eyebrow: "Identity",
-    title: "Give your Bot a face",
-    detail:
-      "Choose a finish and color you will recognize at a glance, then give it a short name.",
-  },
   2: {
     eyebrow: "Role",
     title: "What should it own?",
@@ -79,7 +73,7 @@ export function BotCreateSheet({
 
   const panelWidth = Math.min(Math.max(width - 28, 296), 520);
   const panelHeight = Math.min(height - 48, width < 600 ? 640 : 600);
-  const copy = STEP_COPY[step];
+  const copy = step === 1 ? null : STEP_COPY[step];
 
   const reset = () => {
     setStep(1);
@@ -170,19 +164,6 @@ export function BotCreateSheet({
                   ) : (
                     <BotIdentityMark icon={icon} color={color} size={32} />
                   )}
-                  <View>
-                    <Text style={[styles.kicker, { color: colors.textFaint }]}>
-                      BOT STUDIO
-                    </Text>
-                    <Text
-                      style={[styles.botName, { color: colors.text }]}
-                      numberOfLines={1}
-                    >
-                      {step === 1
-                        ? "New teammate"
-                        : name.trim() || "New teammate"}
-                    </Text>
-                  </View>
                 </View>
                 <Pressable
                   accessibilityRole="button"
@@ -226,17 +207,19 @@ export function BotCreateSheet({
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
               >
-                <View style={styles.headingBlock}>
-                  <Text style={[styles.eyebrow, { color }]}>
-                    {copy.eyebrow} · {step} of 3
-                  </Text>
-                  <Text style={[styles.title, { color: colors.text }]}>
-                    {copy.title}
-                  </Text>
-                  <Text style={[styles.detail, { color: colors.textSoft }]}>
-                    {copy.detail}
-                  </Text>
-                </View>
+                {copy ? (
+                  <View style={styles.headingBlock}>
+                    <Text style={[styles.eyebrow, { color }]}>
+                      {copy.eyebrow} · {step} of 3
+                    </Text>
+                    <Text style={[styles.title, { color: colors.text }]}>
+                      {copy.title}
+                    </Text>
+                    <Text style={[styles.detail, { color: colors.textSoft }]}>
+                      {copy.detail}
+                    </Text>
+                  </View>
+                ) : null}
 
                 {step === 1 ? (
                   <View style={styles.stepContent}>
@@ -427,7 +410,6 @@ const styles = StyleSheet.create({
   identityLabel: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
     flex: 1,
   },
   mark: {
@@ -440,18 +422,6 @@ const styles = StyleSheet.create({
   markText: {
     fontSize: 14,
     fontWeight: "800",
-  },
-  kicker: {
-    fontSize: 9,
-    lineHeight: 12,
-    fontWeight: "800",
-    letterSpacing: 1.15,
-  },
-  botName: {
-    fontSize: 13.5,
-    lineHeight: 18,
-    fontWeight: "600",
-    maxWidth: 230,
   },
   closeButton: {
     width: 36,

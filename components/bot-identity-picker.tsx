@@ -1,4 +1,4 @@
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { BotGlyph } from "@/components/bot-glyph";
 import {
@@ -64,11 +64,6 @@ export function BotIdentityPicker({
             interactive
             blink
           />
-          {Platform.OS === "web" ? (
-            <Text style={[styles.previewHint, { color: colors.textFaint }]}>
-              Move your pointer to meet your Bot
-            </Text>
-          ) : null}
         </View>
       ) : null}
 
@@ -158,13 +153,9 @@ const styles = StyleSheet.create({
     gap: 13,
   },
   previewWrap: {
-    height: 146,
+    height: 124,
     alignItems: "center",
     justifyContent: "center",
-  },
-  previewHint: {
-    fontSize: 10.5,
-    marginTop: -4,
   },
   group: {
     gap: 6,
