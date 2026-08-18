@@ -81,8 +81,8 @@ export function BotCreateSheet({
   const [color, setColor] = useState(DEFAULT_BOT_COLOR);
   const [icon, setIcon] = useState(DEFAULT_BOT_ICON);
 
-  const panelWidth = Math.min(Math.max(width - 28, 296), 590);
-  const panelHeight = Math.min(height - 40, width < 600 ? 700 : 660);
+  const panelWidth = Math.min(Math.max(width - 28, 296), 520);
+  const panelHeight = Math.min(height - 48, width < 600 ? 640 : 600);
   const shape = getBotShape(icon) ?? DEFAULT_BOT_SHAPE;
   const copy = STEP_COPY[step];
 
@@ -143,33 +143,9 @@ export function BotCreateSheet({
     >
       <Pressable
         accessibilityLabel="Dismiss Bot maker"
-        style={[
-          styles.scrim,
-          {
-            backgroundColor: dark
-              ? "rgba(2, 4, 8, 0.68)"
-              : "rgba(21, 25, 31, 0.32)",
-          },
-        ]}
+        style={styles.scrim}
         onPress={close}
       >
-        <View
-          pointerEvents="none"
-          style={[
-            styles.ambientOrb,
-            styles.orbLeft,
-            { backgroundColor: tint(color, dark ? 0.36 : 0.25) },
-          ]}
-        />
-        <View
-          pointerEvents="none"
-          style={[
-            styles.ambientOrb,
-            styles.orbRight,
-            { backgroundColor: tint(colors.accent, dark ? 0.32 : 0.2) },
-          ]}
-        />
-
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={styles.keyboardLayer}
@@ -180,8 +156,9 @@ export function BotCreateSheet({
             accessibilityViewIsModal
           >
             <GlassSurface
-              radius={32}
-              blur={42}
+              radius={28}
+              blur={30}
+              flat
               style={[
                 styles.panel,
                 { width: panelWidth, height: panelHeight },
@@ -434,28 +411,12 @@ export function BotCreateSheet({
 const styles = StyleSheet.create({
   scrim: {
     flex: 1,
-    overflow: "hidden",
   },
   keyboardLayer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     padding: 14,
-  },
-  ambientOrb: {
-    position: "absolute",
-    width: 360,
-    height: 360,
-    borderRadius: 180,
-    opacity: 0.76,
-  },
-  orbLeft: {
-    left: -120,
-    bottom: -110,
-  },
-  orbRight: {
-    right: -160,
-    top: -130,
   },
   panel: {
     overflow: "hidden",

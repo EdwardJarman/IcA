@@ -8,7 +8,6 @@ import {
   getBotShape,
   type BotShape,
 } from "@/components/bot-glyph";
-import { GlassChip } from "@/components/liquid-glass";
 import { tint, useRookTheme } from "@/lib/ui";
 
 export const BOT_COLORS = [
@@ -57,21 +56,7 @@ export function BotIdentityPicker({
     <View style={styles.wrap}>
       {showPreview ? (
         <View style={styles.previewWrap}>
-          <View
-            style={[
-              styles.previewGlow,
-              { backgroundColor: tint(color, dark ? 0.28 : 0.18) },
-            ]}
-          />
-          <GlassChip
-            radius={30}
-            blur={24}
-            raised
-            style={styles.previewGlass}
-            contentStyle={styles.previewGlassContent}
-          >
-            <BotGlyph shape={shape} color={color} size={78} />
-          </GlassChip>
+          <BotGlyph shape={shape} color={color} size={76} />
         </View>
       ) : null}
 
@@ -150,23 +135,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   previewWrap: {
-    height: 108,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 2,
-  },
-  previewGlow: {
-    position: "absolute",
-    width: 110,
-    height: 72,
-    borderRadius: 999,
-    transform: [{ scaleX: 1.2 }],
-  },
-  previewGlass: {
-    width: 96,
-    height: 96,
-  },
-  previewGlassContent: {
+    height: 86,
     alignItems: "center",
     justifyContent: "center",
   },
