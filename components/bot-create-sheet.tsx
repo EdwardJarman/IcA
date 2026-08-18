@@ -14,15 +14,11 @@ import {
 } from "react-native";
 
 import {
-  BotGlyph,
-  DEFAULT_BOT_SHAPE,
-  getBotShape,
-} from "@/components/bot-glyph";
-import {
   BotIdentityPicker,
   DEFAULT_BOT_COLOR,
   DEFAULT_BOT_ICON,
 } from "@/components/bot-identity-picker";
+import { BotIdentityMark } from "@/components/bot-orb";
 import { GlassSurface } from "@/components/liquid-glass";
 import { Field, useRookTheme } from "@/components/rook-primitives";
 import { tint } from "@/lib/ui";
@@ -41,7 +37,7 @@ const STEP_COPY: Record<
     eyebrow: "Identity",
     title: "Give your Bot a face",
     detail:
-      "Choose a shape and color you will recognize at a glance, then give it a short name.",
+      "Choose a finish and color you will recognize at a glance, then give it a short name.",
   },
   2: {
     eyebrow: "Role",
@@ -83,7 +79,6 @@ export function BotCreateSheet({
 
   const panelWidth = Math.min(Math.max(width - 28, 296), 520);
   const panelHeight = Math.min(height - 48, width < 600 ? 640 : 600);
-  const shape = getBotShape(icon) ?? DEFAULT_BOT_SHAPE;
   const copy = STEP_COPY[step];
 
   const reset = () => {
@@ -159,10 +154,7 @@ export function BotCreateSheet({
               radius={28}
               blur={30}
               flat
-              style={[
-                styles.panel,
-                { width: panelWidth, height: panelHeight },
-              ]}
+              style={[styles.panel, { width: panelWidth, height: panelHeight }]}
               contentStyle={styles.panelContent}
             >
               <View style={styles.topRow}>
@@ -176,7 +168,7 @@ export function BotCreateSheet({
                       </Text>
                     </View>
                   ) : (
-                    <BotGlyph shape={shape} color={color} size={32} />
+                    <BotIdentityMark icon={icon} color={color} size={32} />
                   )}
                   <View>
                     <Text style={[styles.kicker, { color: colors.textFaint }]}>
@@ -329,7 +321,7 @@ export function BotCreateSheet({
                         },
                       ]}
                     >
-                      <BotGlyph shape={shape} color={color} size={38} />
+                      <BotIdentityMark icon={icon} color={color} size={38} />
                       <View style={styles.summaryCopy}>
                         <Text
                           style={[styles.summaryTitle, { color: colors.text }]}

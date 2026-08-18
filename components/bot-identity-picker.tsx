@@ -1,16 +1,19 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
+import { BotGlyph } from "@/components/bot-glyph";
 import {
-  BOT_SHAPES,
-  BotGlyph,
-  DEFAULT_BOT_SHAPE,
-  botShapeIcon,
-  getBotShape,
-  type BotShape,
-} from "@/components/bot-glyph";
+  BOT_ORB_MATERIALS,
+  BotOrb,
+  DEFAULT_BOT_ORB_ICON,
+  DEFAULT_BOT_ORB_MATERIAL,
+  botOrbIcon,
+  getBotOrbMaterial,
+  type BotOrbMaterial,
+} from "@/components/bot-orb";
 import { tint, useRookTheme } from "@/lib/ui";
 
 export const BOT_COLORS = [
+  "#111318",
   "#A66D3B",
   "#F04455",
   "#F97316",
@@ -24,16 +27,14 @@ export const BOT_COLORS = [
 ] as const;
 
 export const DEFAULT_BOT_COLOR = "#23B26D";
-export const DEFAULT_BOT_ICON = botShapeIcon(DEFAULT_BOT_SHAPE);
+export const DEFAULT_BOT_ICON = DEFAULT_BOT_ORB_ICON;
 
-const SHAPE_LABELS: Record<BotShape, string> = {
-  orb: "Orb",
-  drop: "Drop",
-  capsule: "Capsule",
-  "soft-square": "Soft square",
-  kite: "Kite",
-  hex: "Hexagon",
-  cloud: "Cloud",
+const MATERIAL_LABELS: Record<
+  BotOrbMaterial,
+  { title: string; detail: string }
+> = {
+  matte: { title: "Matte", detail: "Quiet depth" },
+  iridescent: { title: "Prism", detail: "Living color" },
 };
 
 export function BotIdentityPicker({
@@ -50,13 +51,24 @@ export function BotIdentityPicker({
   showPreview?: boolean;
 }) {
   const { colors, dark } = useRookTheme();
-  const shape = getBotShape(icon) ?? DEFAULT_BOT_SHAPE;
+  const material = getBotOrbMaterial(icon) ?? DEFAULT_BOT_ORB_MATERIAL;
 
   return (
     <View style={styles.wrap}>
       {showPreview ? (
         <View style={styles.previewWrap}>
-          <BotGlyph shape={shape} color={color} size={76} />
+          <BotOrb
+            color={color}
+            material={material}
+            size={116}
+            interactive
+            blink
+          />
+          {Platform.OS === "web" ? (
+            <Text style={[styles.previewHint, { color: colors.textFaint }]}>
+              Move your pointer to meet your Bot
+            </Text>
+          ) : null}
         </View>
       ) : null}
 
@@ -92,35 +104,46 @@ export function BotIdentityPicker({
       </View>
 
       <View style={styles.group}>
-        <Text style={[styles.label, { color: colors.textSoft }]}>SHAPE</Text>
-        <View accessibilityRole="radiogroup" style={styles.options}>
-          {BOT_SHAPES.map((option) => {
-            const selected = shape === option;
+        <Text style={[styles.label, { color: colors.textSoft }]}>FINISH</Text>
+        <View accessibilityRole="radiogroup" style={styles.materials}>
+          {BOT_ORB_MATERIALS.map((option) => {
+            const selected = material === option;
+            const copy = MATERIAL_LABELS[option];
             return (
               <Pressable
                 key={option}
                 accessibilityRole="radio"
-                accessibilityLabel={`Choose ${SHAPE_LABELS[option]} Bot shape`}
+                accessibilityLabel={`${copy.title} orb finish: ${copy.detail}`}
                 accessibilityState={{ checked: selected }}
-                onPress={() => onIconChange(botShapeIcon(option))}
+                onPress={() => onIconChange(botOrbIcon(option))}
                 style={({ pressed }) => [
-                  styles.shapeOption,
+                  styles.materialOption,
                   {
                     borderColor: selected ? color : colors.line,
                     backgroundColor: selected
-                      ? tint(color, dark ? 0.24 : 0.12)
+                      ? tint(color, dark ? 0.2 : 0.09)
                       : colors.surfaceAlt,
-                    opacity: pressed ? 0.68 : 1,
-                    transform: [{ scale: pressed ? 0.94 : 1 }],
+                    opacity: pressed ? 0.72 : 1,
+                    transform: [{ scale: pressed ? 0.98 : 1 }],
                   },
                 ]}
               >
                 <BotGlyph
-                  shape={option}
-                  color={selected ? color : colors.textFaint}
-                  size={26}
+                  shape="orb"
+                  color={option === "matte" ? color : "#8977F4"}
+                  size={30}
                   showEyes={false}
                 />
+                <View style={styles.materialCopy}>
+                  <Text style={[styles.materialTitle, { color: colors.text }]}>
+                    {copy.title}
+                  </Text>
+                  <Text
+                    style={[styles.materialDetail, { color: colors.textFaint }]}
+                  >
+                    {copy.detail}
+                  </Text>
+                </View>
               </Pressable>
             );
           })}
@@ -132,12 +155,16 @@ export function BotIdentityPicker({
 
 const styles = StyleSheet.create({
   wrap: {
-    gap: 12,
+    gap: 13,
   },
   previewWrap: {
-    height: 86,
+    height: 146,
     alignItems: "center",
     justifyContent: "center",
+  },
+  previewHint: {
+    fontSize: 10.5,
+    marginTop: -4,
   },
   group: {
     gap: 6,
@@ -150,29 +177,47 @@ const styles = StyleSheet.create({
   options: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 5,
+    gap: 3,
   },
   colorOption: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
   },
   colorDot: {
-    width: 20,
-    height: 20,
+    width: 19,
+    height: 19,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.55)",
   },
-  shapeOption: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
+  materials: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  materialOption: {
+    flex: 1,
+    minHeight: 52,
+    borderRadius: 15,
     borderWidth: 1,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 8,
+  },
+  materialCopy: {
+    flex: 1,
+  },
+  materialTitle: {
+    fontSize: 12.5,
+    fontWeight: "700",
+  },
+  materialDetail: {
+    fontSize: 10.5,
+    marginTop: 1,
   },
 });

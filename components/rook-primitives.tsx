@@ -2,7 +2,8 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { type ComponentProps, type ReactNode, useMemo } from "react";
 import { Modal, Pressable, StyleSheet, Text, TextInput, type DimensionValue, type TextInputProps, View } from "react-native";
 
-import { BotGlyph, getBotShape } from "@/components/bot-glyph";
+import { getBotShape } from "@/components/bot-glyph";
+import { BotIdentityMark, getBotOrbMaterial } from "@/components/bot-orb";
 import { shade, tint, useRookTheme, type RookTokens, type ToneName } from "@/lib/ui";
 
 export { useRookTheme } from "@/lib/ui";
@@ -39,6 +40,8 @@ export function Avatar({
 }) {
   const { dark } = useRookTheme();
   const shape = getBotShape(icon);
+  const orbMaterial = getBotOrbMaterial(icon);
+  const customIdentity = Boolean(shape || orbMaterial);
   const glyph = dark ? shade(color, -0.28) : color;
   const style = useMemo(
     () => ({
@@ -54,11 +57,11 @@ export function Avatar({
 
   return (
     <View
-      style={shape ? { width: size, height: size, alignItems: "center", justifyContent: "center" } : style}
+      style={customIdentity ? { width: size, height: size, alignItems: "center", justifyContent: "center" } : style}
       accessibilityElementsHidden
     >
-      {shape ? (
-        <BotGlyph shape={shape} color={color} size={size} />
+      {customIdentity ? (
+        <BotIdentityMark icon={icon} color={color} size={size} />
       ) : icon ? (
         <MaterialIcons name={icon as IconName} size={Math.max(14, Math.round(size * 0.46))} color={glyph} />
       ) : (
