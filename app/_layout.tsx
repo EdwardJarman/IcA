@@ -21,6 +21,7 @@ import { RookNotificationProvider } from "@/lib/rook-notifications";
 import { initManusRuntime, subscribeSafeAreaInsets } from "@/lib/_core/manus-runtime";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { createTRPCClient, trpc } from "@/lib/trpc";
+import { BotDragProvider } from "@/lib/bot-drag";
 import { WorkroomProvider } from "@/lib/workroom-store";
 import { useAuth } from "@/hooks/use-auth";
 import { NotificationNavigationObserver } from "@/components/notification-navigation";
@@ -108,11 +109,13 @@ function RookApplication() {
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
           <WorkroomProvider>
-            <RookNotificationProvider>
-              <NotificationNavigationObserver />
-              <SessionNavigator />
-              <StatusBar style="auto" />
-            </RookNotificationProvider>
+            <BotDragProvider>
+              <RookNotificationProvider>
+                <NotificationNavigationObserver />
+                <SessionNavigator />
+                <StatusBar style="auto" />
+              </RookNotificationProvider>
+            </BotDragProvider>
           </WorkroomProvider>
         </QueryClientProvider>
       </trpc.Provider>
