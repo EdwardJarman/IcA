@@ -1,21 +1,19 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { BotCreateSheet } from "@/components/bot-create-sheet";
 import {
   Avatar,
   EmptyState,
-  Field,
   IconButton,
   PrimaryButton,
   SecondaryButton,
   ScreenHeader,
   Sheet,
-  SheetEyebrow,
   StatusPill,
   useRookTheme,
 } from "@/components/rook-primitives";
-import { BotIdentityPicker } from "@/components/bot-identity-picker";
 import { ScreenContainer } from "@/components/screen-container";
 import { useDockScroll } from "@/lib/dock-visibility";
 import { tint } from "@/lib/ui";
@@ -23,31 +21,10 @@ import { useWorkroom, type Bot } from "@/lib/workroom-store";
 
 export default function BotsScreen() {
   const { colors } = useRookTheme();
-  const { bots, selectedBotId, selectBot, updateBotStatus, createBot } = useWorkroom();
+  const { bots, selectedBotId, selectBot, updateBotStatus } = useWorkroom();
   const [openBot, setOpenBot] = useState<Bot | null>(null);
   const [newOpen, setNewOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [role, setRole] = useState("");
-  const [purpose, setPurpose] = useState("");
-  const [approvalRule, setApprovalRule] = useState("Ask me before anything external, irreversible, or sensitive.");
-  const [color, setColor] = useState("#0E7C59");
-  const [icon, setIcon] = useState("auto-awesome");
   const dockScroll = useDockScroll();
-
-  const handleCreate = () => {
-    if (!name.trim() || !role.trim() || !purpose.trim()) {
-      Alert.alert("Finish your Bot", "Add a name, primary job, and working description before creating this Bot.");
-      return;
-    }
-    createBot({ name, role, purpose, approvalRule, color, icon });
-    setName("");
-    setRole("");
-    setPurpose("");
-    setApprovalRule("Ask me before anything external, irreversible, or sensitive.");
-    setColor("#0E7C59");
-    setIcon("auto-awesome");
-    setNewOpen(false);
-  };
 
   return (
     <ScreenContainer containerClassName="bg-background" className="flex-1" edges={["top", "left", "right"]}>
@@ -167,32 +144,7 @@ export default function BotsScreen() {
         ) : null}
       </Sheet>
 
-      {/* Create a Bot */}
-      <Sheet visible={newOpen} onClose={() => setNewOpen(false)}>
-        <SheetEyebrow>New Bot</SheetEyebrow>
-        <Text style={{ color: colors.text, fontSize: 23, lineHeight: 29, fontWeight: "700", letterSpacing: -0.6 }}>
-          Another teammate
-        </Text>
-        <Text style={{ color: colors.textSoft, fontSize: 13.5, lineHeight: 19.5, marginTop: 7, marginBottom: 18 }}>
-          Give it a name, a job, and a clear point to pause for you.
-        </Text>
-        <View style={{ gap: 14 }}>
-          <Field label="Name" value={name} onChangeText={setName} placeholder="Atlas, Ledger, Scout…" />
-          <Field label="Primary job" value={role} onChangeText={setRole} placeholder="Research analyst" />
-          <Field
-            label="What it owns"
-            value={purpose}
-            onChangeText={setPurpose}
-            placeholder="Summarizes sources, flags contradictions, returns a brief I can act on."
-            multiline
-          />
-          <Field label="Approval boundary" value={approvalRule} onChangeText={setApprovalRule} multiline />
-          <BotIdentityPicker color={color} icon={icon} onColorChange={setColor} onIconChange={setIcon} />
-        </View>
-        <View style={{ marginTop: 24 }}>
-          <PrimaryButton label="Create Bot" icon="check" onPress={handleCreate} />
-        </View>
-      </Sheet>
+      <BotCreateSheet visible={newOpen} onClose={() => setNewOpen(false)} />
     </ScreenContainer>
   );
 }

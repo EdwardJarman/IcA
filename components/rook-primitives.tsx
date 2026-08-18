@@ -2,6 +2,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { type ComponentProps, type ReactNode, useMemo } from "react";
 import { Modal, Pressable, StyleSheet, Text, TextInput, type DimensionValue, type TextInputProps, View } from "react-native";
 
+import { BotGlyph, getBotShape } from "@/components/bot-glyph";
 import { shade, tint, useRookTheme, type RookTokens, type ToneName } from "@/lib/ui";
 
 export { useRookTheme } from "@/lib/ui";
@@ -37,6 +38,7 @@ export function Avatar({
   icon?: string;
 }) {
   const { dark } = useRookTheme();
+  const shape = getBotShape(icon);
   const glyph = dark ? shade(color, -0.28) : color;
   const style = useMemo(
     () => ({
@@ -51,8 +53,13 @@ export function Avatar({
   );
 
   return (
-    <View style={style} accessibilityElementsHidden>
-      {icon ? (
+    <View
+      style={shape ? { width: size, height: size, alignItems: "center", justifyContent: "center" } : style}
+      accessibilityElementsHidden
+    >
+      {shape ? (
+        <BotGlyph shape={shape} color={color} size={size} />
+      ) : icon ? (
         <MaterialIcons name={icon as IconName} size={Math.max(14, Math.round(size * 0.46))} color={glyph} />
       ) : (
         <Text style={{ color: glyph, fontSize: Math.max(11, Math.round(size * 0.38)), fontWeight: "700", letterSpacing: -0.2 }}>
@@ -524,4 +531,3 @@ export function SheetEyebrow({ children }: { children: ReactNode }) {
     </Text>
   );
 }
-

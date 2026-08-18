@@ -1,96 +1,207 @@
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import {
+  BOT_SHAPES,
+  BotGlyph,
+  DEFAULT_BOT_SHAPE,
+  botShapeIcon,
+  getBotShape,
+  type BotShape,
+} from "@/components/bot-glyph";
+import { GlassChip } from "@/components/liquid-glass";
 import { tint, useRookTheme } from "@/lib/ui";
 
-export const BOT_COLORS = ["#0E7C59", "#2563EB", "#7563F5", "#DF8D19", "#D95D78", "#5B7086"];
-export const BOT_ICONS = ["auto-awesome", "search", "edit-note", "bolt", "insights", "rocket-launch", "code", "support-agent"] as const;
+export const BOT_COLORS = [
+  "#A66D3B",
+  "#F04455",
+  "#F97316",
+  "#F5AA32",
+  "#23B26D",
+  "#2AA9A1",
+  "#3B82F6",
+  "#7C5CFC",
+  "#EC5EA8",
+  "#707784",
+] as const;
+
+export const DEFAULT_BOT_COLOR = "#23B26D";
+export const DEFAULT_BOT_ICON = botShapeIcon(DEFAULT_BOT_SHAPE);
+
+const SHAPE_LABELS: Record<BotShape, string> = {
+  orb: "Orb",
+  drop: "Drop",
+  capsule: "Capsule",
+  "soft-square": "Soft square",
+  kite: "Kite",
+  hex: "Hexagon",
+  cloud: "Cloud",
+};
 
 export function BotIdentityPicker({
   color,
   icon,
   onColorChange,
   onIconChange,
+  showPreview = true,
 }: {
   color: string;
   icon: string;
   onColorChange: (color: string) => void;
   onIconChange: (icon: string) => void;
+  showPreview?: boolean;
 }) {
-  const { colors } = useRookTheme();
+  const { colors, dark } = useRookTheme();
+  const shape = getBotShape(icon) ?? DEFAULT_BOT_SHAPE;
+
   return (
     <View style={styles.wrap}>
-      <Text style={[styles.label, { color: colors.textSoft }]}>COLOR</Text>
-      <View style={styles.colors}>
-        {BOT_COLORS.map((option) => {
-          const selected = color === option;
-          return (
-            <Pressable
-              key={option}
-              accessibilityRole="radio"
-              accessibilityLabel={`Choose Bot color ${option}`}
-              accessibilityState={{ checked: selected }}
-              onPress={() => onColorChange(option)}
-              style={[
-                styles.colorOption,
-                { backgroundColor: tint(option, 0.16), borderColor: selected ? option : "transparent" },
-              ]}
-            >
-              <View style={[styles.colorDot, { backgroundColor: option }]} />
-              {selected ? <View style={[styles.colorCheck, { backgroundColor: option }]} /> : null}
-            </Pressable>
-          );
-        })}
+      {showPreview ? (
+        <View style={styles.previewWrap}>
+          <View
+            style={[
+              styles.previewGlow,
+              { backgroundColor: tint(color, dark ? 0.28 : 0.18) },
+            ]}
+          />
+          <GlassChip
+            radius={30}
+            blur={24}
+            raised
+            style={styles.previewGlass}
+            contentStyle={styles.previewGlassContent}
+          >
+            <BotGlyph shape={shape} color={color} size={78} />
+          </GlassChip>
+        </View>
+      ) : null}
+
+      <View style={styles.group}>
+        <Text style={[styles.label, { color: colors.textSoft }]}>COLOR</Text>
+        <View accessibilityRole="radiogroup" style={styles.options}>
+          {BOT_COLORS.map((option) => {
+            const selected = color === option;
+            return (
+              <Pressable
+                key={option}
+                accessibilityRole="radio"
+                accessibilityLabel={`Choose Bot color ${option}`}
+                accessibilityState={{ checked: selected }}
+                onPress={() => onColorChange(option)}
+                style={({ pressed }) => [
+                  styles.colorOption,
+                  {
+                    borderColor: selected ? colors.text : "transparent",
+                    backgroundColor: selected
+                      ? colors.surfaceAlt
+                      : "transparent",
+                    opacity: pressed ? 0.68 : 1,
+                    transform: [{ scale: pressed ? 0.94 : 1 }],
+                  },
+                ]}
+              >
+                <View style={[styles.colorDot, { backgroundColor: option }]} />
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
-      <Text style={[styles.label, { color: colors.textSoft }]}>ICON</Text>
-      <View style={styles.icons}>
-        {BOT_ICONS.map((option) => {
-          const selected = icon === option;
-          return (
-            <Pressable
-              key={option}
-              accessibilityRole="radio"
-              accessibilityLabel={`Choose Bot icon ${option}`}
-              accessibilityState={{ checked: selected }}
-              onPress={() => onIconChange(option)}
-              style={[
-                styles.iconOption,
-                {
-                  backgroundColor: selected ? tint(color, 0.12) : colors.surfaceAlt,
-                  borderColor: selected ? tint(color, 0.4) : colors.line,
-                },
-              ]}
-            >
-              <MaterialIcons name={option} size={20} color={selected ? color : colors.textSoft} />
-            </Pressable>
-          );
-        })}
+
+      <View style={styles.group}>
+        <Text style={[styles.label, { color: colors.textSoft }]}>SHAPE</Text>
+        <View accessibilityRole="radiogroup" style={styles.options}>
+          {BOT_SHAPES.map((option) => {
+            const selected = shape === option;
+            return (
+              <Pressable
+                key={option}
+                accessibilityRole="radio"
+                accessibilityLabel={`Choose ${SHAPE_LABELS[option]} Bot shape`}
+                accessibilityState={{ checked: selected }}
+                onPress={() => onIconChange(botShapeIcon(option))}
+                style={({ pressed }) => [
+                  styles.shapeOption,
+                  {
+                    borderColor: selected ? color : colors.line,
+                    backgroundColor: selected
+                      ? tint(color, dark ? 0.24 : 0.12)
+                      : colors.surfaceAlt,
+                    opacity: pressed ? 0.68 : 1,
+                    transform: [{ scale: pressed ? 0.94 : 1 }],
+                  },
+                ]}
+              >
+                <BotGlyph
+                  shape={option}
+                  color={selected ? color : colors.textFaint}
+                  size={26}
+                  showEyes={false}
+                />
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: 9, marginTop: 16 },
-  label: { fontSize: 11.5, fontWeight: "600", letterSpacing: 0.8, marginTop: 4 },
-  colors: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  colorOption: {
-    width: 44,
-    height: 36,
-    borderRadius: 12,
+  wrap: {
+    gap: 12,
+  },
+  previewWrap: {
+    height: 108,
     alignItems: "center",
     justifyContent: "center",
-    flexDirection: "row",
-    gap: 4,
-    borderWidth: 1.5,
+    marginBottom: 2,
   },
-  colorDot: { width: 14, height: 14, borderRadius: 7 },
-  colorCheck: { width: 6, height: 6, borderRadius: 3 },
-  icons: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  iconOption: {
-    width: 44,
-    height: 40,
-    borderRadius: 13,
+  previewGlow: {
+    position: "absolute",
+    width: 110,
+    height: 72,
+    borderRadius: 999,
+    transform: [{ scaleX: 1.2 }],
+  },
+  previewGlass: {
+    width: 96,
+    height: 96,
+  },
+  previewGlassContent: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  group: {
+    gap: 6,
+  },
+  label: {
+    fontSize: 10.5,
+    fontWeight: "700",
+    letterSpacing: 1,
+  },
+  options: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 5,
+  },
+  colorOption: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  colorDot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.55)",
+  },
+  shapeOption: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
