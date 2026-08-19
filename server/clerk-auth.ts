@@ -14,6 +14,30 @@ export function clerkOpenId(clerkUserId: string): string {
   return `clerk:${clerkUserId}`;
 }
 
+export function transientClerkUser(input: {
+  clerkUserId: string;
+  name: string | null;
+  email: string | null;
+}): User {
+  let hash = 2166136261;
+  for (const character of input.clerkUserId) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  const now = new Date();
+  return {
+    id: -((hash >>> 0) % 2_147_483_646 + 1),
+    openId: clerkOpenId(input.clerkUserId),
+    name: input.name,
+    email: input.email,
+    loginMethod: "clerk",
+    role: "user",
+    createdAt: now,
+    updatedAt: now,
+    lastSignedIn: now,
+  };
+}
+
 export async function authenticateClerkRequest(request: Request): Promise<User | null> {
   const secretKey = process.env.CLERK_SECRET_KEY;
   const token = extractClerkBearerToken(request.header("authorization"));
@@ -36,6 +60,7 @@ export async function authenticateClerkRequest(request: Request): Promise<User |
     )?.emailAddress ?? clerkUser.emailAddresses[0]?.emailAddress ?? null;
     const name = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") || null;
     const openId = clerkOpenId(claims.sub);
+    const transientUser = transientClerkUser({ clerkUserId: claims.sub, name, email });
 
     await db.upsertUser({
       openId,
@@ -45,7 +70,11 @@ export async function authenticateClerkRequest(request: Request): Promise<User |
       lastSignedIn: new Date(),
     });
 
-    return (await db.getUserByOpenId(openId)) ?? null;
+    const storedUser = await db.getUserByOpenId(openId);
+    if (storedUser) return storedUser;
+
+    console.warn("[Clerk auth] Database unavailable; using transient authenticated user");
+    return transientUser;
   } catch (error) {
     console.warn("[Clerk auth] Token verification failed", {
       errorName: error instanceof Error ? error.name : "UnknownError",
