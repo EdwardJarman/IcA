@@ -54,18 +54,21 @@ export function createApp() {
     res.json({ ok: true, timestamp: Date.now() });
   });
 
-  app.get("/api/health/ai", async (_req, res) => {
+  app.get("/api/health/ai", async (req, res) => {
+    const provider = req.query.provider === "orcarouter" ? "orcarouter" : "openrouter";
     try {
-      const status = await getAiBackendStatus();
+      const status = await getAiBackendStatus(provider);
       res.status(status.operational ? 200 : 503).json(status);
     } catch {
       res.status(503).json({
-        provider: "openrouter",
-        configured: Boolean(process.env.OPENROUTER_API_KEY),
+        provider,
+        configured: provider === "orcarouter"
+          ? Boolean(process.env.ORCAROUTER_API_KEY)
+          : Boolean(process.env.OPENROUTER_API_KEY),
         operational: false,
         freeModels: 0,
         dailyFreeRequestAllowance: null,
-        message: "OpenRouter health check failed.",
+        message: `${provider === "orcarouter" ? "OrcaRouter" : "OpenRouter"} health check failed.`,
       });
     }
   });

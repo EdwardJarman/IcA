@@ -41,7 +41,7 @@ import { botDropTargetProps, useBotDrag } from "@/lib/bot-drag";
 import { useRookNotifications } from "@/lib/rook-notifications";
 import { trpc } from "@/lib/trpc";
 import { tint } from "@/lib/ui";
-import { defaultModelForProvider, modelMatchesProvider } from "@/lib/ai-provider";
+import { defaultModelForProvider, modelMatchesProvider, providerLabel } from "@/lib/ai-provider";
 import { approvalReason, fileSizeLabel, requiresApproval } from "@/lib/workroom-helpers";
 import { useWorkroom, type Bot } from "@/lib/workroom-store";
 
@@ -113,8 +113,8 @@ export default function ChatScreen() {
       Alert.alert(
         "No model available",
         workroom.aiProvider === "chatgpt"
-          ? "Reconnect ChatGPT or switch to OpenRouter from Account."
-          : "Rook could not load an OpenRouter model. Please try again.",
+          ? "Reconnect ChatGPT or switch to another provider from Account."
+          : `Rook could not load a ${providerLabel(workroom.aiProvider)} model. Please try again.`,
       );
       return;
     }

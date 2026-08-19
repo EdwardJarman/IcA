@@ -1,4 +1,5 @@
-export type AiProvider = "openrouter" | "chatgpt";
+export type AiProvider = "openrouter" | "chatgpt" | "orcarouter";
+export type AiBackendProvider = "openrouter" | "orcarouter";
 
 export type AiModelSummary = {
   id: string;
@@ -8,10 +9,13 @@ export type AiModelSummary = {
 };
 
 export const providerLabel = (provider: AiProvider) =>
-  provider === "chatgpt" ? "ChatGPT" : "OpenRouter";
+  provider === "chatgpt" ? "ChatGPT" : provider === "orcarouter" ? "OrcaRouter" : "OpenRouter";
 
-export const modelMatchesProvider = (modelId: string, provider: AiProvider) =>
-  provider === "chatgpt" ? modelId.startsWith("chatgpt:") : !modelId.startsWith("chatgpt:");
+export const modelMatchesProvider = (modelId: string, provider: AiProvider) => {
+  if (provider === "chatgpt") return modelId.startsWith("chatgpt:");
+  if (provider === "orcarouter") return modelId.startsWith("orcarouter:");
+  return !modelId.startsWith("chatgpt:") && !modelId.startsWith("orcarouter:");
+};
 
 export const modelsForProvider = <T extends { id: string }>(models: T[], provider: AiProvider) =>
   models.filter((model) => modelMatchesProvider(model.id, provider));

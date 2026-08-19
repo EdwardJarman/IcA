@@ -2,12 +2,17 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Text, View } from "react-native";
 
 import { Card, StatusPill } from "@/components/rook-primitives";
+import { providerLabel } from "@/lib/ai-provider";
 import { trpc } from "@/lib/trpc";
 import { tint, useRookTheme } from "@/lib/ui";
 
-export function AiBackendCard() {
+export function AiBackendCard({
+  provider = "openrouter",
+}: {
+  provider?: "openrouter" | "orcarouter";
+}) {
   const { colors, dark } = useRookTheme();
-  const status = trpc.ai.status.useQuery(undefined, {
+  const status = trpc.ai.status.useQuery({ provider }, {
     staleTime: 5 * 60 * 1000,
     retry: 1,
   });
@@ -34,7 +39,7 @@ export function AiBackendCard() {
             justifyContent: "center",
           }}
         >
-          <MaterialIcons name="hub" size={21} color={colors.accent} />
+          <MaterialIcons name={provider === "orcarouter" ? "public" : "hub"} size={21} color={colors.accent} />
         </View>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text
@@ -45,7 +50,7 @@ export function AiBackendCard() {
               letterSpacing: -0.2,
             }}
           >
-            OpenRouter
+            {providerLabel(provider)}
           </Text>
           <Text
             numberOfLines={2}
@@ -56,7 +61,9 @@ export function AiBackendCard() {
               marginTop: 3,
             }}
           >
-            Server-managed access to zero-cost models. Keys never reach the app.
+            {provider === "orcarouter"
+              ? "Server-managed gateway to zero-cost models. Keys never reach the app."
+              : "Server-managed access to zero-cost models. Keys never reach the app."}
           </Text>
         </View>
         <StatusPill label={label} tone={ready ? "mint" : data?.configured ? "amber" : "muted"} />
@@ -100,7 +107,7 @@ export function AiBackendCard() {
         />
         <Text style={{ color: colors.textSoft, fontSize: 11.5, lineHeight: 16, flex: 1 }}>
           {status.isError
-            ? "Rook could not check OpenRouter right now."
+            ? `Rook could not check ${providerLabel(provider)} right now.`
             : data?.message || "Checking the live free-model catalog…"}
         </Text>
       </View>

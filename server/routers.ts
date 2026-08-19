@@ -69,7 +69,9 @@ export const appRouter = router({
     }),
   }),
   ai: router({
-    status: protectedProcedure.query(() => getAiBackendStatus()),
+    status: protectedProcedure
+      .input(z.object({ provider: z.enum(["openrouter", "orcarouter"]).default("openrouter") }))
+      .query(({ input }) => getAiBackendStatus(input.provider)),
     models: protectedProcedure.query(async ({ ctx }) => ({
       provider: "multi" as const,
       models: await listAiModels(ctx.req),

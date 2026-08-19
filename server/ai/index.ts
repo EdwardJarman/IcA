@@ -8,21 +8,42 @@ import {
   type RookAiStatus,
 } from "./openrouter";
 import { invokeChatGPT, isChatGPTModel, listChatGPTModels } from "./chatgpt";
+import {
+  invokeOrcaRouter,
+  isOrcaRouterModel,
+  listOrcaRouterModels,
+  orcarouterStatus,
+  type OrcaRouterStatus,
+} from "./orcarouter";
 
 export type AiModel = RookAiModel;
-export type AiBackendStatus = RookAiStatus;
+export type AiBackendStatus = RookAiStatus | OrcaRouterStatus;
+export type AiBackendProvider = "openrouter" | "orcarouter";
 
 export const listAiModels = async (request?: Request) => {
   const openRouter = await listOpenRouterModels();
   const chatGPT = request ? await listChatGPTModels(request) : [];
-  return [...chatGPT, ...openRouter];
+  return [...chatGPT, ...listOrcaRouterModels(), ...openRouter];
 };
-export const getAiBackendStatus = () => openRouterStatus();
+
+export const getAiBackendStatus = (
+  provider: AiBackendProvider = "openrouter",
+): Promise<AiBackendStatus> =>
+  provider === "orcarouter" ? orcarouterStatus() : openRouterStatus();
+
 export const invokeAi = (params: InvokeParams, request?: Request): Promise<InvokeResult> => {
   if (isChatGPTModel(params.model)) {
     if (!request) throw new Error("ChatGPT needs an authenticated Rook request.");
     return invokeChatGPT(params, request).catch((error) => {
       console.warn("[AI] ChatGPT unavailable; using OpenRouter fallback", {
+        errorName: error instanceof Error ? error.name : "UnknownError",
+      });
+      return invokeOpenRouter({ ...params, model: "openrouter/free" });
+    });
+  }
+  if (isOrcaRouterModel(params.model)) {
+    return invokeOrcaRouter(params).catch((error) => {
+      console.warn("[AI] OrcaRouter unavailable; using OpenRouter fallback", {
         errorName: error instanceof Error ? error.name : "UnknownError",
       });
       return invokeOpenRouter({ ...params, model: "openrouter/free" });

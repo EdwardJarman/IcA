@@ -34,7 +34,7 @@ export function AiProviderSwitch() {
       </View>
 
       <View style={{ flexDirection: "row", borderRadius: 16, backgroundColor: colors.surfaceAlt, padding: 4, gap: 4 }}>
-        {(["openrouter", "chatgpt"] as const).map((provider) => {
+        {(["openrouter", "orcarouter", "chatgpt"] as const).map((provider) => {
           const active = aiProvider === provider;
           const unavailable = provider === "chatgpt" && !chatGPTConnected;
           return (
@@ -59,8 +59,8 @@ export function AiProviderSwitch() {
                 ...(active && PlatformShadow(dark)),
               })}
             >
-              <MaterialIcons name={provider === "chatgpt" ? "chat-bubble-outline" : "hub"} size={16} color={active ? colors.text : colors.textFaint} />
-              <Text style={{ color: active ? colors.text : colors.textSoft, fontSize: 12.5, fontWeight: active ? "700" : "600" }}>{providerLabel(provider)}</Text>
+              <MaterialIcons name={provider === "chatgpt" ? "chat-bubble-outline" : provider === "orcarouter" ? "public" : "hub"} size={16} color={active ? colors.text : colors.textFaint} />
+              <Text numberOfLines={1} style={{ color: active ? colors.text : colors.textSoft, fontSize: 12.5, fontWeight: active ? "700" : "600" }}>{providerLabel(provider)}</Text>
               {active ? <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: colors.mint }} /> : null}
             </Pressable>
           );
@@ -71,6 +71,11 @@ export function AiProviderSwitch() {
         <View style={{ flexDirection: "row", gap: 7, alignItems: "center" }}>
           <MaterialIcons name="info-outline" size={14} color={colors.textFaint} />
           <Text style={{ flex: 1, color: colors.textFaint, fontSize: 10.5, lineHeight: 15 }}>Uses your connected ChatGPT plan. Rook falls back safely if the plan session expires.</Text>
+        </View>
+      ) : aiProvider === "orcarouter" ? (
+        <View style={{ flexDirection: "row", gap: 7, alignItems: "center" }}>
+          <MaterialIcons name="info-outline" size={14} color={colors.textFaint} />
+          <Text style={{ flex: 1, color: colors.textFaint, fontSize: 10.5, lineHeight: 15 }}>Uses Rook’s shared OrcaRouter gateway and its zero-cost models.</Text>
         </View>
       ) : (
         <View style={{ flexDirection: "row", gap: 7, alignItems: "center" }}>

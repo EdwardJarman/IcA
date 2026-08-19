@@ -35,7 +35,8 @@ export default function AccountScreen() {
           <SectionHeader title="AI backend" caption="Connect your own plan or use Rook’s shared free models." />
           <AiProviderSwitch />
           <ChatGPTConnectionCard />
-          <AiBackendCard />
+          <AiBackendCard provider="openrouter" />
+          <AiBackendCard provider="orcarouter" />
         </View>
         <View style={{ gap: 12 }}>
           <SectionHeader title="Connected apps" caption="Give your Bots useful access without giving up control." />
