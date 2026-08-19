@@ -22,7 +22,7 @@ import { initManusRuntime, subscribeSafeAreaInsets } from "@/lib/_core/manus-run
 import { ThemeProvider } from "@/lib/theme-provider";
 import { createTRPCClient, trpc } from "@/lib/trpc";
 import { BotDragProvider } from "@/lib/bot-drag";
-import { WorkroomProvider } from "@/lib/workroom-store";
+import { WorkroomProvider, useWorkroom } from "@/lib/workroom-store";
 import { useAuth } from "@/hooks/use-auth";
 import { NotificationNavigationObserver } from "@/components/notification-navigation";
 import { authWebAppearance, authWebLocalization } from "@/constants/auth-web";
@@ -45,21 +45,27 @@ function SessionNavigator() {
   const router = useRouter();
   const segments = useSegments();
   const { loading, isAuthenticated } = useAuth();
+  const { ready: workroomReady, onboardingComplete } = useWorkroom();
   const { colors } = useRookTheme();
 
   useEffect(() => {
-    if (loading) return;
     const route = segments[0] as string | undefined;
     const isAuthRoute = route === "sign-in" || route === "sign-up";
+    const isOnboardingRoute = route === "onboarding";
+    if (loading) return;
     if (!isAuthenticated && !isAuthRoute) router.replace("/sign-in");
-    if (isAuthenticated && isAuthRoute) router.replace("/(tabs)");
-  }, [isAuthenticated, loading, router, segments]);
+    if (!isAuthenticated || !workroomReady) return;
+    if (!onboardingComplete && !isOnboardingRoute) router.replace("/onboarding" as never);
+    if (onboardingComplete && (isAuthRoute || isOnboardingRoute)) router.replace("/(tabs)");
+  }, [isAuthenticated, loading, onboardingComplete, router, segments, workroomReady]);
 
-  if (loading) {
+  if (loading || (isAuthenticated && !workroomReady)) {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.canvas, gap: 12 }}>
         <ActivityIndicator color={colors.text} />
-        <Text style={{ color: colors.textSoft, fontSize: 13 }}>Checking your secure session…</Text>
+        <Text style={{ color: colors.textSoft, fontSize: 13 }}>
+          {loading ? "Checking your secure session…" : "Opening your workroom…"}
+        </Text>
       </View>
     );
   }
@@ -68,6 +74,7 @@ function SessionNavigator() {
       <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="sign-in" />
       <Stack.Screen name="sign-up" />
+      <Stack.Screen name="onboarding" />
       <Stack.Screen name="(tabs)" />
     </Stack>
   );
