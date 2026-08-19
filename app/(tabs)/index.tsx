@@ -23,6 +23,7 @@ import {
 } from "react-native";
 
 import { BotCreateSheet } from "@/components/bot-create-sheet";
+import { AiWorkingIndicator } from "@/components/ai-working-indicator";
 import { ComposerConnectorsSheet } from "@/components/composer-connectors-sheet";
 import { ComposerModelPicker } from "@/components/composer-model-picker";
 import { RookLogo } from "@/components/rook-logo";
@@ -566,6 +567,7 @@ export default function ChatScreen() {
                         </View>
                       );
                     })}
+                    {replyMutation.isPending && activeBot ? <AiWorkingIndicator bot={activeBot} /> : null}
                   </View>
                 ) : (
                   <EmptyState
