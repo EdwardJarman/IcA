@@ -26,6 +26,28 @@ export type ExcelAgentApproval = {
   risk: "Medium";
 };
 
+export function agentClockContext(now = new Date(), requestedTimeZone?: string) {
+  let timeZone = requestedTimeZone?.trim() || "UTC";
+  try {
+    new Intl.DateTimeFormat("en-GB", { timeZone }).format(now);
+  } catch {
+    timeZone = "UTC";
+  }
+  const local = new Intl.DateTimeFormat("en-GB", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+    timeZone,
+    timeZoneName: "long",
+  }).format(now);
+  return { iso: now.toISOString(), timeZone, local };
+}
+
 export async function runRookAgent(input: {
   userId: number;
   request?: Request;
@@ -36,16 +58,20 @@ export async function runRookAgent(input: {
   botPurpose: string;
   model?: string;
   message: string;
+  userTimeZone?: string;
+  connectors?: Array<"microsoft-excel">;
   recentContext: Array<{ author: "user" | "bot" | "system"; body: string }>;
 }) {
   const requestedModel = input.model?.trim() || "openrouter/free";
+  const clock = agentClockContext(new Date(), input.userTimeZone);
 
   const connection = isMicrosoftExcelConfigured()
     ? await microsoftConnectionStatus(input.userId)
     : { configured: false, connected: false, needsReauthorization: false };
   const tools = connection.connected ? EXCEL_TOOLS : undefined;
+  const excelSelected = input.connectors?.includes("microsoft-excel") === true;
   const connectionNote = connection.connected
-    ? "Microsoft Excel is connected. Use the Excel tools whenever the user asks about a workbook. Never guess workbook, worksheet, range, table, value, or formula data: inspect it with tools. Read tools may run immediately. Every write tool is only a proposal and is never executed until the user approves it in Rook Updates. Prepare no more than one write action per turn unless the user explicitly requests a batch."
+    ? `Microsoft Excel is connected.${excelSelected ? " The user explicitly attached Microsoft Excel to this message, so treat workbook context as relevant and use the tools when needed." : ""} Use the Excel tools whenever the user asks about a workbook. Never guess workbook, worksheet, range, table, value, or formula data: inspect it with tools. Read tools may run immediately. Every write tool is only a proposal and is never executed until the user approves it in Rook Updates. Prepare no more than one write action per turn unless the user explicitly requests a batch.`
     : connection.needsReauthorization
       ? "Microsoft Excel needs to be reconnected. Tell the user to open Account → Microsoft Excel and reconnect it if this request needs workbook access."
       : connection.configured
@@ -55,7 +81,7 @@ export async function runRookAgent(input: {
   const messages: Message[] = [
     {
       role: "system",
-      content: `You are ${input.botName}, a ${input.botRole} in Rook. Purpose: ${input.botPurpose}\n\nYou are a calm, precise AI teammate. Respond with a concise, useful working note. State assumptions when information is missing. ${connectionNote} Never claim an external action succeeded unless its tool result explicitly confirms success. Never reveal internal IDs, access tokens, or raw tool implementation details.`,
+      content: `You are ${input.botName}, a ${input.botRole} in Rook. Purpose: ${input.botPurpose}\n\nLive clock at the start of this request: ${clock.local} (${clock.timeZone}). Canonical timestamp: ${clock.iso}. This clock is generated fresh by Rook for every request. Use it for date and time questions and be explicit about the timezone when relevant.\n\nYou are a calm, precise AI teammate. Respond with a concise, useful working note. State assumptions when information is missing. ${connectionNote} Never claim an external action succeeded unless its tool result explicitly confirms success. Never reveal internal IDs, access tokens, or raw tool implementation details.`,
     },
     ...input.recentContext.map((entry) => ({
       role: entry.author === "bot" ? "assistant" as const : entry.author === "system" ? "system" as const : "user" as const,

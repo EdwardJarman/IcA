@@ -23,6 +23,7 @@ import {
 } from "react-native";
 
 import { BotCreateSheet } from "@/components/bot-create-sheet";
+import { ComposerConnectorsSheet } from "@/components/composer-connectors-sheet";
 import { ComposerModelPicker } from "@/components/composer-model-picker";
 import { RookLogo } from "@/components/rook-logo";
 import {
@@ -30,11 +31,8 @@ import {
   EmptyState,
   IconButton,
   PrimaryButton,
-  SecondaryButton,
   Sheet,
   SheetEyebrow,
-  StatusPill,
-  toneColors,
   useRookTheme,
 } from "@/components/rook-primitives";
 import { ScreenContainer } from "@/components/screen-container";
@@ -44,16 +42,7 @@ import { trpc } from "@/lib/trpc";
 import { tint } from "@/lib/ui";
 import { defaultModelForProvider, modelMatchesProvider } from "@/lib/ai-provider";
 import { approvalReason, fileSizeLabel, requiresApproval } from "@/lib/workroom-helpers";
-import { useWorkroom, type Bot, type TaskStatus, type WorkTask } from "@/lib/workroom-store";
-
-const toneForStatus = (status: TaskStatus) =>
-  status === "Approval required" || status === "Blocked"
-    ? ("amber" as const)
-    : status === "Failed" || status === "Cancelled"
-      ? ("coral" as const)
-      : status === "Paused" || status === "Waiting for input"
-        ? ("muted" as const)
-        : ("mint" as const);
+import { useWorkroom, type Bot } from "@/lib/workroom-store";
 
 /**
  * Rook is one room.
@@ -70,12 +59,14 @@ export default function ChatScreen() {
   const router = useRouter();
   const { colors } = useRookTheme();
   const workroom = useWorkroom();
-  const { bots, messages, tasks, approvals } = workroom;
+  const { bots, messages, approvals } = workroom;
   const { ready: roomReady, chatBotIds, activeChatBotId, focusChatBot, addBotToChat, removeBotFromChat, draggingBot, dropActive, setDropActive } = useBotDrag();
   const [composer, setComposer] = useState("");
+  const [composerFocused, setComposerFocused] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [taskOpen, setTaskOpen] = useState<WorkTask | null>(null);
+  const [connectorsOpen, setConnectorsOpen] = useState(false);
+  const [excelAttached, setExcelAttached] = useState(false);
   const replyMutation = trpc.workroom.reply.useMutation();
   const voiceMutation = trpc.voice.transcribe.useMutation();
   const modelCatalog = trpc.ai.models.useQuery(undefined, { staleTime: 5 * 60 * 1000, retry: 1 });
@@ -172,8 +163,11 @@ export default function ChatScreen() {
         botPurpose: activeBot.purpose,
         model: resolvedModel.id,
         message: clean,
+        userTimeZone: deviceTimeZone(),
+        connectors: excelAttached ? ["microsoft-excel"] : [],
         recentContext: visibleMessages.slice(-6).map((message) => ({ author: message.author, body: message.body })),
       });
+      setExcelAttached(false);
       if (response.approvals.length) {
         workroom.updateTaskStatus(task.id, "Approval required", "Review the exact Excel change in Updates.");
         response.approvals.forEach((approval) => workroom.addApproval({
@@ -278,14 +272,13 @@ export default function ChatScreen() {
     }
   };
 
-  const changeTaskState = (status: TaskStatus) => {
-    if (!taskOpen) return;
-    workroom.updateTaskStatus(taskOpen.id, status, status === "Cancelled" ? "This task will not take further actions." : taskOpen.nextAction);
-    setTaskOpen({ ...taskOpen, status });
-  };
-
   const canSend = Boolean(composer.trim()) && !recorderState.isRecording && !replyMutation.isPending && !voiceMutation.isPending;
   const roomHasBots = chatBots.length > 0;
+  const stageDropProps = botDropTargetProps({
+    onEnter: () => setDropActive(true),
+    onLeave: () => setDropActive(false),
+    onDropBot: (botId) => addBotToChat(botId),
+  }) as object;
 
   return (
     <ScreenContainer containerClassName="bg-background" className="flex-1" edges={["top", "left", "right"]}>
@@ -351,7 +344,10 @@ export default function ChatScreen() {
           /* Empty room. A brand-new account sees a calm first-run invitation;
              a user with Bots but none in the room gets asked to bring one in. */
           bots.length === 0 ? (
-            <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 30, paddingBottom: 40 }}>
+            <View
+              {...stageDropProps}
+              style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 30, paddingBottom: 40, backgroundColor: dropActive ? tint(colors.accent, 0.05) : colors.canvas }}
+            >
               <View
                 style={{
                   width: 76,
@@ -379,7 +375,10 @@ export default function ChatScreen() {
               </Text>
             </View>
           ) : (
-            <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 30, paddingBottom: 40 }}>
+            <View
+              {...stageDropProps}
+              style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 30, paddingBottom: 40, backgroundColor: dropActive ? tint(colors.accent, 0.05) : colors.canvas }}
+            >
               <View
                 style={{
                   width: 76,
@@ -402,6 +401,9 @@ export default function ChatScreen() {
               <View style={{ marginTop: 24 }}>
                 <PrimaryButton label="Add a Bot" icon="add" onPress={() => setPickerOpen(true)} />
               </View>
+              {draggingBot && dropActive ? (
+                <Text style={{ color: colors.accent, fontSize: 13, fontWeight: "700", marginTop: 18 }}>Drop to add {draggingBot.name}</Text>
+              ) : null}
             </View>
           )
         ) : (
@@ -439,11 +441,7 @@ export default function ChatScreen() {
                 { flex: 1 },
                 dropActive && { backgroundColor: tint(colors.accent, 0.05) },
               ]}
-              {...(botDropTargetProps({
-                onEnter: () => setDropActive(true),
-                onLeave: () => setDropActive(false),
-                onDropBot: (botId) => addBotToChat(botId),
-              }) as object)}
+              {...stageDropProps}
             >
               <ScrollView
                 ref={threadRef}
@@ -459,24 +457,6 @@ export default function ChatScreen() {
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
               >
-                {/* Quiet context line that opens the thread. */}
-                {activeBot ? (
-                  <View
-                    style={{
-                      alignSelf: "center",
-                      backgroundColor: colors.surfaceAlt,
-                      borderRadius: 999,
-                      paddingHorizontal: 14,
-                      paddingVertical: 6,
-                      maxWidth: "100%",
-                    }}
-                  >
-                    <Text numberOfLines={2} style={{ color: colors.textSoft, fontSize: 12, lineHeight: 17, textAlign: "center" }}>
-                      {activeBot.purpose}
-                    </Text>
-                  </View>
-                ) : null}
-
                 {pendingApproval ? (
                   <Pressable
                     accessibilityRole="button"
@@ -516,50 +496,6 @@ export default function ChatScreen() {
                     <MaterialIcons name="chevron-right" size={20} color={colors.amber} />
                   </Pressable>
                 ) : null}
-
-                {activeBot
-                  ? tasks
-                      .filter((task) => task.botId === activeBot.id)
-                      .slice(0, 1)
-                      .map((task) => (
-                        <Pressable
-                          key={task.id}
-                          accessibilityRole="button"
-                          accessibilityLabel={`Open task ${task.title}`}
-                          onPress={() => setTaskOpen(task)}
-                          style={({ pressed }) => [
-                            {
-                              backgroundColor: colors.surface,
-                              borderWidth: 1,
-                              borderColor: colors.line,
-                              borderRadius: 18,
-                              padding: 15,
-                              gap: 11,
-                              opacity: pressed ? 0.8 : 1,
-                            },
-                          ]}
-                        >
-                          <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
-                            <View style={{ flex: 1, minWidth: 0 }}>
-                              <Text numberOfLines={1} style={{ color: colors.text, fontSize: 14, fontWeight: "600", letterSpacing: -0.1 }}>
-                                {task.title}
-                              </Text>
-                              <Text numberOfLines={2} style={{ color: colors.textSoft, fontSize: 12.5, lineHeight: 18, marginTop: 3 }}>
-                                {task.summary}
-                              </Text>
-                            </View>
-                            <StatusPill label={task.status} tone={toneForStatus(task.status)} />
-                          </View>
-                          <TaskProgress steps={task.steps} />
-                          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                            <Text numberOfLines={1} style={{ flex: 1, color: colors.textFaint, fontSize: 11.5, lineHeight: 15 }}>
-                              {task.nextAction}
-                            </Text>
-                            <Text style={{ color: colors.accent, fontSize: 12, fontWeight: "700" }}>Details</Text>
-                          </View>
-                        </Pressable>
-                      ))
-                  : null}
 
                 {visibleMessages.length ? (
                   <View style={{ gap: 14, paddingTop: 2 }}>
@@ -669,7 +605,7 @@ export default function ChatScreen() {
                 style={{
                   borderRadius: 28,
                   borderWidth: 1,
-                  borderColor: colors.line,
+                  borderColor: composerFocused ? tint(colors.accent, 0.35) : colors.line,
                   backgroundColor: colors.surface,
                   paddingHorizontal: 12,
                   paddingTop: 10,
@@ -681,8 +617,11 @@ export default function ChatScreen() {
                 }}
               >
                 <TextInput
+                  nativeID="rook-composer-input"
                   value={composer}
                   onChangeText={setComposer}
+                  onFocus={() => setComposerFocused(true)}
+                  onBlur={() => setComposerFocused(false)}
                   placeholder="Type your message here…"
                   placeholderTextColor={colors.textFaint}
                   multiline
@@ -704,7 +643,12 @@ export default function ChatScreen() {
                 <View style={{ minHeight: 42, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                   <View style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 2 }}>
                     <ComposerControl icon="attach-file" label="Upload a file" onPress={() => void handleAttach()} />
-                    <ComposerControl icon="add" label="Add a Bot" onPress={() => setPickerOpen(true)} />
+                    <ComposerControl
+                      icon="add"
+                      label={excelAttached ? "Microsoft Excel attached. Open connectors" : "Open connectors"}
+                      active={excelAttached}
+                      onPress={() => setConnectorsOpen(true)}
+                    />
                     <ComposerModelPicker
                       value={resolvedModel?.id || activeBot?.model || ""}
                       provider={workroom.aiProvider}
@@ -812,6 +756,12 @@ export default function ChatScreen() {
         </ScrollView>
       </Sheet>
 
+      <ComposerConnectorsSheet
+        visible={connectorsOpen}
+        onClose={() => setConnectorsOpen(false)}
+        onSelectExcel={() => setExcelAttached(true)}
+      />
+
       {/* Create a Bot — shared three-step sheet. */}
       <BotCreateSheet
         visible={createOpen}
@@ -819,72 +769,6 @@ export default function ChatScreen() {
         onCreated={(bot) => addBotToChat(bot.id)}
       />
 
-      {/* Task detail */}
-      <Sheet visible={Boolean(taskOpen)} onClose={() => setTaskOpen(null)}>
-        {taskOpen ? (
-          <>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
-              <View style={{ flex: 1 }}>
-                <SheetEyebrow>Task</SheetEyebrow>
-                <Text style={{ color: colors.text, fontSize: 20, lineHeight: 26, fontWeight: "700", letterSpacing: -0.5 }}>
-                  {taskOpen.title}
-                </Text>
-              </View>
-              <StatusPill label={taskOpen.status} tone={toneForStatus(taskOpen.status)} />
-            </View>
-            <Text style={{ color: colors.textSoft, fontSize: 13.5, lineHeight: 19.5, marginTop: 10 }}>
-              {taskOpen.summary} Started {taskOpen.startedAt}. {taskOpen.risk} risk.
-            </Text>
-            <TaskProgress steps={taskOpen.steps} />
-            <View style={{ marginTop: 16, gap: 13 }}>
-              {taskOpen.steps.map((step) => {
-                const tone = toneColors(
-                  colors,
-                  step.state === "done" ? "mint" : step.state === "active" ? "amber" : "muted",
-                );
-                return (
-                  <View key={step.id} style={{ flexDirection: "row", alignItems: "center", gap: 11 }}>
-                    <View
-                      style={{
-                        width: 26,
-                        height: 26,
-                        borderRadius: 10,
-                        borderWidth: 1,
-                        borderColor: step.state === "pending" ? colors.lineStrong : tint(step.state === "done" ? colors.mint : colors.amber, 0.35),
-                        backgroundColor: step.state === "pending" ? "transparent" : tone.bg,
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      {step.state === "done" ? (
-                        <MaterialIcons name="check" size={15} color={colors.mint} />
-                      ) : step.state === "active" ? (
-                        <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: colors.amber }} />
-                      ) : (
-                        <Text style={{ color: colors.textFaint, fontSize: 11, fontWeight: "600" }}>·</Text>
-                      )}
-                    </View>
-                    <Text
-                      style={{
-                        flex: 1,
-                        color: step.state === "active" ? colors.text : colors.textSoft,
-                        fontSize: 13.5,
-                        fontWeight: step.state === "active" ? "600" : "400",
-                      }}
-                    >
-                      {step.label}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-            <View style={{ flexDirection: "row", gap: 10, marginTop: 24 }}>
-              <SecondaryButton label="Pause task" icon="pause" onPress={() => changeTaskState("Paused")} />
-              <SecondaryButton label="Stop task" icon="stop" destructive onPress={() => changeTaskState("Cancelled")} />
-            </View>
-          </>
-        ) : null}
-      </Sheet>
     </ScreenContainer>
   );
 }
@@ -954,28 +838,6 @@ function RoomBotChip({
   );
 }
 
-/** Segmented progress bar for a task's steps. */
-function TaskProgress({ steps }: { steps: WorkTask["steps"] }) {
-  const { colors } = useRookTheme();
-  return (
-    <View style={{ flexDirection: "row", gap: 5 }}>
-      {steps.map((step) => (
-        <View
-          key={step.id}
-          accessibilityLabel={step.label}
-          style={{
-            flex: 1,
-            height: 4,
-            borderRadius: 3,
-            backgroundColor:
-              step.state === "done" ? colors.mint : step.state === "active" ? tint(colors.amber, 0.55) : colors.surfaceAlt,
-          }}
-        />
-      ))}
-    </View>
-  );
-}
-
 function FileChip({ name }: { name: string }) {
   const { colors } = useRookTheme();
   return (
@@ -1002,10 +864,12 @@ function ComposerControl({
   icon,
   label,
   onPress,
+  active = false,
 }: {
   icon: "attach-file" | "add";
   label: string;
   onPress: () => void;
+  active?: boolean;
 }) {
   const { colors } = useRookTheme();
   return (
@@ -1019,10 +883,14 @@ function ComposerControl({
         borderRadius: 17,
         alignItems: "center",
         justifyContent: "center",
+        backgroundColor: active ? tint(colors.accent, 0.11) : "transparent",
         opacity: pressed ? 0.5 : 1,
       })}
     >
-      <MaterialIcons name={icon} size={icon === "add" ? 21 : 19} color={colors.textFaint} />
+      <MaterialIcons name={icon} size={icon === "add" ? 21 : 19} color={active ? colors.accent : colors.textFaint} />
+      {active ? (
+        <View style={{ position: "absolute", right: 4, top: 4, width: 6, height: 6, borderRadius: 3, backgroundColor: colors.mint }} />
+      ) : null}
     </Pressable>
   );
 }
@@ -1047,4 +915,12 @@ async function audioToBase64(uri: string): Promise<string> {
     binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
   }
   return btoa(binary);
+}
+
+function deviceTimeZone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
 }

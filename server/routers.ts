@@ -34,6 +34,8 @@ export const appRouter = router({
       botPurpose: z.string().min(1).max(500),
       model: z.string().min(1).max(180).optional(),
       message: z.string().min(1).max(4000),
+      userTimeZone: z.string().min(1).max(80).optional(),
+      connectors: z.array(z.enum(["microsoft-excel"])).max(4).optional(),
       recentContext: z.array(z.object({
         author: z.enum(["user", "bot", "system"]),
         body: z.string().max(2000),

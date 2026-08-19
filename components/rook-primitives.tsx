@@ -1,6 +1,6 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { type ComponentProps, type ReactNode, useMemo } from "react";
-import { Modal, Pressable, StyleSheet, Text, TextInput, type DimensionValue, type TextInputProps, View } from "react-native";
+import { Modal, Pressable, StyleSheet, Text, TextInput, type DimensionValue, type TextInputProps, type ViewStyle, View } from "react-native";
 
 import { getBotShape } from "@/components/bot-glyph";
 import { BotIdentityMark, getBotOrbMaterial } from "@/components/bot-orb";
@@ -481,11 +481,13 @@ export function Sheet({
   onClose,
   children,
   maxHeight = "88%",
+  contentStyle,
 }: {
   visible: boolean;
   onClose: () => void;
   children: ReactNode;
   maxHeight?: DimensionValue;
+  contentStyle?: ViewStyle;
 }) {
   const { colors } = useRookTheme();
   return (
@@ -493,19 +495,19 @@ export function Sheet({
       <Pressable style={{ flex: 1, justifyContent: "flex-end", backgroundColor: colors.scrim }} onPress={onClose}>
         <Pressable
           onPress={(event) => event.stopPropagation()}
-          style={{
-            backgroundColor: colors.surface,
-            borderTopLeftRadius: 26,
-            borderTopRightRadius: 26,
-            paddingHorizontal: 20,
-            paddingBottom: 30,
-            paddingTop: 10,
-            maxHeight,
-            shadowColor: colors.shadow,
-            shadowOpacity: 0.2,
-            shadowRadius: 30,
-            shadowOffset: { width: 0, height: -8 },
-          }}
+          style={[{
+              backgroundColor: colors.surface,
+              borderTopLeftRadius: 26,
+              borderTopRightRadius: 26,
+              paddingHorizontal: 20,
+              paddingBottom: 30,
+              paddingTop: 10,
+              maxHeight,
+              shadowColor: colors.shadow,
+              shadowOpacity: 0.2,
+              shadowRadius: 30,
+              shadowOffset: { width: 0, height: -8 },
+            }, contentStyle]}
         >
           <View
             accessibilityLabel="Dismiss"

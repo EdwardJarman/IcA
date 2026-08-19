@@ -26,3 +26,10 @@ input,
 textarea {
   font: inherit;
 }
+
+/* The composer has its own persistent rounded focus surface. Prevent the
+   browser from drawing a second rectangular outline inside that surface. */
+textarea#rook-composer-input:focus,
+textarea#rook-composer-input:focus-visible {
+  outline: none;
+}
