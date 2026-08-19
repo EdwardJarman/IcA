@@ -17,7 +17,13 @@ export function clerkOpenId(clerkUserId: string): string {
 export async function authenticateClerkRequest(request: Request): Promise<User | null> {
   const secretKey = process.env.CLERK_SECRET_KEY;
   const token = extractClerkBearerToken(request.header("authorization"));
-  if (!secretKey || !token) return null;
+  if (!secretKey || !token) {
+    console.warn("[Clerk auth] Request rejected", {
+      hasSecretKey: Boolean(secretKey),
+      hasBearerToken: Boolean(token),
+    });
+    return null;
+  }
 
   try {
     const claims = await verifyToken(token, { secretKey });
@@ -40,7 +46,10 @@ export async function authenticateClerkRequest(request: Request): Promise<User |
     });
 
     return (await db.getUserByOpenId(openId)) ?? null;
-  } catch {
+  } catch (error) {
+    console.warn("[Clerk auth] Token verification failed", {
+      errorName: error instanceof Error ? error.name : "UnknownError",
+    });
     return null;
   }
 }
