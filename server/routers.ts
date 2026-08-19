@@ -4,6 +4,7 @@ import { normalizeWorkroomSnapshot } from "../shared/workroom-snapshot";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { systemRouter } from "./_core/systemRouter";
 import { getAiBackendStatus, listAiModels } from "./ai";
+import { transcribeOpenRouterAudio } from "./ai/openrouter";
 import { deleteChatGPTSession } from "./ai/chatgpt";
 import * as db from "./db";
 import { runRookAgent } from "./integrations/excel-agent";
@@ -71,6 +72,14 @@ export const appRouter = router({
       provider: "multi" as const,
       models: await listAiModels(ctx.req),
     })),
+  }),
+  voice: router({
+    transcribe: protectedProcedure
+      .input(z.object({
+        data: z.string().min(16).max(12_000_000),
+        format: z.enum(["wav", "mp3", "aac", "ogg", "flac", "m4a", "webm"]),
+      }))
+      .mutation(async ({ input }) => ({ text: await transcribeOpenRouterAudio(input) })),
   }),
   excel: router({
     status: protectedProcedure.query(({ ctx }) => microsoftConnectionStatus(ctx.user.id)),

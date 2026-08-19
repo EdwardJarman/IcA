@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { useAuth } from "@/hooks/use-auth";
+import type { AiProvider } from "@/lib/ai-provider";
 import { trpc } from "@/lib/trpc";
 import { emptyWorkroomSnapshot, normalizeWorkroomSnapshot, type WorkroomCloudSnapshot } from "@/shared/workroom-snapshot";
 
@@ -17,7 +18,7 @@ export type WorkNotification = { id: string; title: string; detail: string; tone
 export type Activity = { id: string; title: string; detail: string; tone: "mint" | "amber" | "coral" | "muted"; createdAt: string };
 type BotInput = Pick<Bot, "name" | "role" | "purpose"> & { approvalRule?: string; color?: string; icon?: string; memory?: string; model?: string };
 type SyncStatus = "Connecting" | "Synced" | "Saving" | "Offline changes kept locally" | "Local only";
-type WorkroomContextValue = { ready: boolean; onboardingComplete: boolean; selectedBotId: string; bots: Bot[]; messages: WorkMessage[]; tasks: WorkTask[]; skills: Skill[]; routines: Routine[]; approvals: Approval[]; files: WorkFile[]; notifications: WorkNotification[]; activity: Activity[]; syncStatus: SyncStatus; selectBot: (id: string) => void; createBot: (values: BotInput) => Bot; updateBotStatus: (id: string, status: Bot["status"]) => void; updateBotModel: (id: string, model: string) => void; addMessage: (message: Omit<WorkMessage, "id" | "createdAt">) => void; addTask: (task: Omit<WorkTask, "id" | "startedAt">) => WorkTask; updateTaskStatus: (id: string, status: TaskStatus, nextAction?: string) => void; addSkill: (skill: Omit<Skill, "id">) => void; addApproval: (approval: Omit<Approval, "id" | "createdAt" | "state">) => void; addRoutine: (routine: Omit<Routine, "id">) => void; toggleRoutine: (id: string) => void; resolveApproval: (id: string, state: "Approved" | "Declined") => void; addFile: (file: Omit<WorkFile, "id" | "updatedAt">) => void; markNotificationsRead: () => void; addActivity: (entry: Omit<Activity, "id" | "createdAt">) => void; completeOnboarding: () => void; clearWorkroom: () => void };
+type WorkroomContextValue = { ready: boolean; onboardingComplete: boolean; selectedBotId: string; aiProvider: AiProvider; bots: Bot[]; messages: WorkMessage[]; tasks: WorkTask[]; skills: Skill[]; routines: Routine[]; approvals: Approval[]; files: WorkFile[]; notifications: WorkNotification[]; activity: Activity[]; syncStatus: SyncStatus; selectBot: (id: string) => void; setAiProvider: (provider: AiProvider) => void; createBot: (values: BotInput) => Bot; updateBotStatus: (id: string, status: Bot["status"]) => void; updateBotModel: (id: string, model: string) => void; addMessage: (message: Omit<WorkMessage, "id" | "createdAt">) => void; addTask: (task: Omit<WorkTask, "id" | "startedAt">) => WorkTask; updateTaskStatus: (id: string, status: TaskStatus, nextAction?: string) => void; addSkill: (skill: Omit<Skill, "id">) => void; addApproval: (approval: Omit<Approval, "id" | "createdAt" | "state">) => void; addRoutine: (routine: Omit<Routine, "id">) => void; toggleRoutine: (id: string) => void; resolveApproval: (id: string, state: "Approved" | "Declined") => void; addFile: (file: Omit<WorkFile, "id" | "updatedAt">) => void; markNotificationsRead: () => void; addActivity: (entry: Omit<Activity, "id" | "createdAt">) => void; completeOnboarding: () => void; clearWorkroom: () => void };
 
 const STORAGE_KEY_PREFIX = "rook-local-fallback-v1";
 const BOT_COLORS = ["#0E7C59", "#2563EB", "#7563F5", "#DF8D19", "#D95D78", "#5B7086"];
@@ -32,6 +33,7 @@ export function WorkroomProvider({ children }: { children: ReactNode }) {
   const cloudHydrated = useRef(false);
   const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [selectedBotId, setSelectedBotId] = useState("");
+  const [aiProvider, setAiProvider] = useState<AiProvider>("openrouter");
   const [bots, setBots] = useState<Bot[]>([]);
   const [messages, setMessages] = useState<WorkMessage[]>([]);
   const [tasks, setTasks] = useState<WorkTask[]>([]);
@@ -44,18 +46,20 @@ export function WorkroomProvider({ children }: { children: ReactNode }) {
   const localStorageKey = useMemo(() => `${STORAGE_KEY_PREFIX}-${user?.id ?? "signed-out"}`, [user?.id]);
   const cloudQuery = trpc.cloud.load.useQuery(undefined, { enabled: isAuthenticated && Boolean(user?.id), retry: 1, refetchOnWindowFocus: false });
   const saveCloud = trpc.cloud.save.useMutation();
+  const saveCloudRef = useRef(saveCloud.mutateAsync);
+  saveCloudRef.current = saveCloud.mutateAsync;
 
   const applySnapshot = useCallback((value: unknown) => {
     const snapshot = normalizeWorkroomSnapshot(value);
-    setSelectedBotId(snapshot.selectedBotId); setOnboardingComplete(snapshot.onboardingComplete); setBots(snapshot.bots as Bot[]); setMessages(snapshot.messages as WorkMessage[]); setTasks(snapshot.tasks as WorkTask[]); setSkills(snapshot.skills as Skill[]); setRoutines(snapshot.routines as Routine[]); setApprovals(snapshot.approvals as Approval[]); setFiles(snapshot.files as WorkFile[]); setNotifications(snapshot.notifications as WorkNotification[]); setActivity(snapshot.activity as Activity[]);
+    setSelectedBotId(snapshot.selectedBotId); setOnboardingComplete(snapshot.onboardingComplete); setAiProvider(snapshot.aiProvider); setBots(snapshot.bots as Bot[]); setMessages(snapshot.messages as WorkMessage[]); setTasks(snapshot.tasks as WorkTask[]); setSkills(snapshot.skills as Skill[]); setRoutines(snapshot.routines as Routine[]); setApprovals(snapshot.approvals as Approval[]); setFiles(snapshot.files as WorkFile[]); setNotifications(snapshot.notifications as WorkNotification[]); setActivity(snapshot.activity as Activity[]);
   }, []);
 
   useEffect(() => { cloudHydrated.current = false; setReady(false); setLocalLoaded(false); applySnapshot(emptyWorkroomSnapshot()); void (async () => { try { const raw = await AsyncStorage.getItem(localStorageKey); if (raw) applySnapshot(JSON.parse(raw)); } catch { /* A damaged fallback cache must never block the workroom. */ } finally { setLocalLoaded(true); } })(); }, [applySnapshot, localStorageKey]);
   useEffect(() => { if (!localLoaded) return; if (!isAuthenticated) { cloudHydrated.current = false; setReady(true); return; } if (cloudQuery.isLoading) return; if (!cloudHydrated.current) { if (cloudQuery.data?.snapshot) applySnapshot(cloudQuery.data.snapshot); cloudHydrated.current = true; setReady(true); } }, [applySnapshot, cloudQuery.data, cloudQuery.isLoading, isAuthenticated, localLoaded]);
 
-  const snapshot = useMemo<WorkroomCloudSnapshot>(() => normalizeWorkroomSnapshot({ selectedBotId, onboardingComplete, bots, messages, tasks, skills, routines, approvals, files, notifications, activity }), [selectedBotId, onboardingComplete, bots, messages, tasks, skills, routines, approvals, files, notifications, activity]);
+  const snapshot = useMemo<WorkroomCloudSnapshot>(() => normalizeWorkroomSnapshot({ selectedBotId, onboardingComplete, aiProvider, bots, messages, tasks, skills, routines, approvals, files, notifications, activity }), [selectedBotId, onboardingComplete, aiProvider, bots, messages, tasks, skills, routines, approvals, files, notifications, activity]);
   useEffect(() => { if (!ready) return; void AsyncStorage.setItem(localStorageKey, JSON.stringify(snapshot)); }, [localStorageKey, ready, snapshot]);
-  useEffect(() => { if (!ready || !isAuthenticated || !cloudHydrated.current) return; const handle = setTimeout(() => { void saveCloud.mutateAsync({ snapshot }).catch(() => undefined); }, 550); return () => clearTimeout(handle); }, [isAuthenticated, ready, saveCloud, snapshot]);
+  useEffect(() => { if (!ready || !isAuthenticated || !cloudHydrated.current) return; const handle = setTimeout(() => { void saveCloudRef.current({ snapshot }).catch(() => undefined); }, 550); return () => clearTimeout(handle); }, [isAuthenticated, ready, snapshot]);
 
   const addActivity = useCallback((entry: Omit<Activity, "id" | "createdAt">) => setActivity((current) => [{ ...entry, id: makeId("activity"), createdAt: "Now" }, ...current]), []);
   const addMessage = useCallback((message: Omit<WorkMessage, "id" | "createdAt">) => setMessages((current) => [...current, { ...message, id: makeId("message"), createdAt: timeNow() }]), []);
@@ -73,7 +77,7 @@ export function WorkroomProvider({ children }: { children: ReactNode }) {
   const markNotificationsRead = useCallback(() => setNotifications((current) => current.map((notification) => ({ ...notification, read: true }))), []);
   const clearWorkroom = useCallback(() => applySnapshot(emptyWorkroomSnapshot()), [applySnapshot]);
   const syncStatus: SyncStatus = !isAuthenticated ? "Local only" : cloudQuery.isLoading || !cloudHydrated.current ? "Connecting" : saveCloud.isPending ? "Saving" : saveCloud.isError || cloudQuery.isError ? "Offline changes kept locally" : "Synced";
-  const value = useMemo<WorkroomContextValue>(() => ({ ready, onboardingComplete, selectedBotId, bots, messages, tasks, skills, routines, approvals, files, notifications, activity, syncStatus, selectBot: setSelectedBotId, createBot, updateBotStatus, updateBotModel, addMessage, addTask, updateTaskStatus, addSkill, addApproval, addRoutine, toggleRoutine, resolveApproval, addFile, markNotificationsRead, addActivity, completeOnboarding: () => setOnboardingComplete(true), clearWorkroom }), [ready, onboardingComplete, selectedBotId, bots, messages, tasks, skills, routines, approvals, files, notifications, activity, syncStatus, createBot, updateBotStatus, updateBotModel, addMessage, addTask, updateTaskStatus, addSkill, addApproval, addRoutine, toggleRoutine, resolveApproval, addFile, markNotificationsRead, addActivity, clearWorkroom]);
+  const value = useMemo<WorkroomContextValue>(() => ({ ready, onboardingComplete, selectedBotId, aiProvider, bots, messages, tasks, skills, routines, approvals, files, notifications, activity, syncStatus, selectBot: setSelectedBotId, setAiProvider, createBot, updateBotStatus, updateBotModel, addMessage, addTask, updateTaskStatus, addSkill, addApproval, addRoutine, toggleRoutine, resolveApproval, addFile, markNotificationsRead, addActivity, completeOnboarding: () => setOnboardingComplete(true), clearWorkroom }), [ready, onboardingComplete, selectedBotId, aiProvider, bots, messages, tasks, skills, routines, approvals, files, notifications, activity, syncStatus, createBot, updateBotStatus, updateBotModel, addMessage, addTask, updateTaskStatus, addSkill, addApproval, addRoutine, toggleRoutine, resolveApproval, addFile, markNotificationsRead, addActivity, clearWorkroom]);
   return <WorkroomContext.Provider value={value}>{children}</WorkroomContext.Provider>;
 }
 

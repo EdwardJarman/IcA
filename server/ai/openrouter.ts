@@ -14,6 +14,7 @@ export const OPENROUTER_AUTO_MODEL = "openrouter/free";
 const CATALOG_TTL_MS = 10 * 60 * 1000;
 const STATUS_TTL_MS = 5 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 45_000;
+const FREE_AUDIO_TRANSCRIPTION_MODEL = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free";
 
 export type RookAiModel = {
   id: string;
@@ -370,6 +371,45 @@ export async function invokeOpenRouter(
   if (!result.choices?.length)
     throw new Error("The selected free model did not return a response.");
   return result as InvokeResult;
+}
+
+export async function transcribeOpenRouterAudio(input: {
+  data: string;
+  format: "wav" | "mp3" | "aac" | "ogg" | "flac" | "m4a" | "webm";
+}): Promise<string> {
+  if (!isOpenRouterConfigured())
+    throw new Error("Voice input is unavailable because OpenRouter is not configured.");
+
+  const response = await fetch(`${OPENROUTER_API_BASE}/chat/completions`, {
+    method: "POST",
+    headers: headers(true),
+    body: JSON.stringify({
+      model: FREE_AUDIO_TRANSCRIPTION_MODEL,
+      messages: [{
+        role: "user",
+        content: [
+          { type: "text", text: "Transcribe this voice message exactly. Return only the spoken words, with natural punctuation. Do not add commentary." },
+          { type: "input_audio", input_audio: { data: input.data, format: input.format } },
+        ],
+      }],
+      max_tokens: 900,
+      temperature: 0,
+    }),
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  const body = await readJson<OpenRouterErrorBody & {
+    choices?: Array<{ message?: { content?: string | Array<{ type?: string; text?: string }> } }>;
+  }>(response);
+  if (!response.ok) throw new Error(errorMessage(response.status, body));
+  const content = body.choices?.[0]?.message?.content;
+  const text = typeof content === "string"
+    ? content
+    : Array.isArray(content)
+      ? content.map((part) => part.text || "").join(" ")
+      : "";
+  const clean = text.trim();
+  if (!clean) throw new Error("Rook could not hear any speech in that recording.");
+  return clean;
 }
 
 export const __resetOpenRouterCachesForTests = () => {

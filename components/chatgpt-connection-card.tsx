@@ -9,6 +9,7 @@ import { getApiBaseUrl } from "@/constants/oauth";
 import { Card, StatusPill } from "@/components/rook-primitives";
 import { tint, useRookTheme } from "@/lib/ui";
 import { trpc } from "@/lib/trpc";
+import { useWorkroom } from "@/lib/workroom-store";
 
 type ChatGPTUser = { email?: string; name?: string; plan?: string };
 type SessionResponse = {
@@ -35,6 +36,7 @@ class ChatGPTRequestError extends Error {
 export function ChatGPTConnectionCard() {
   const { colors, dark } = useRookTheme();
   const { getToken } = useClerkAuth();
+  const { aiProvider, setAiProvider } = useWorkroom();
   const utils = trpc.useUtils();
   const getTokenRef = useRef(getToken);
   const utilsRef = useRef(utils);
@@ -171,6 +173,7 @@ export function ChatGPTConnectionCard() {
       setSession({ status: "unauthenticated" });
       setLogin(null);
       setModelCount(0);
+      if (aiProvider === "chatgpt") setAiProvider("openrouter");
       await utilsRef.current.ai.models.invalidate();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not disconnect ChatGPT.");

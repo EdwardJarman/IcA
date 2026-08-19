@@ -5,6 +5,7 @@ import { type ComponentProps, type ReactNode, useState } from "react";
 import { Alert, Platform, Pressable, ScrollView, Text, View } from "react-native";
 
 import { AiBackendCard } from "@/components/ai-backend-card";
+import { AiProviderSwitch } from "@/components/ai-provider-switch";
 import { ChatGPTConnectionCard } from "@/components/chatgpt-connection-card";
 import { ExcelConnectionCard } from "@/components/excel-connection-card";
 import { Avatar, Card, ScreenHeader, SectionHeader, StatusPill, Switch } from "@/components/rook-primitives";
@@ -32,6 +33,7 @@ export default function AccountScreen() {
         <AppearanceCard />
         <View style={{ gap: 12 }}>
           <SectionHeader title="AI backend" caption="Connect your own plan or use Rook’s shared free models." />
+          <AiProviderSwitch />
           <ChatGPTConnectionCard />
           <AiBackendCard />
         </View>

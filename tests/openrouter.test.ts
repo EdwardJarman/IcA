@@ -5,6 +5,7 @@ import {
   invokeOpenRouter,
   normalizeFreeOpenRouterModels,
   openRouterStatus,
+  transcribeOpenRouterAudio,
 } from "../server/ai/openrouter";
 
 const previousKey = process.env.OPENROUTER_API_KEY;
@@ -177,5 +178,26 @@ describe("OpenRouter inference", () => {
       String((fetchMock.mock.calls[1][1] as RequestInit).body),
     );
     expect(body.models).toEqual(["openrouter/free"]);
+  });
+
+  it("transcribes recorded audio with the free audio-capable model", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({
+        choices: [{ message: { content: "Draft the quarterly update." } }],
+      }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(transcribeOpenRouterAudio({ data: "d2ViLWF1ZGlv", format: "webm" }))
+      .resolves.toBe("Draft the quarterly update.");
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("/chat/completions");
+    const body = JSON.parse(String(init.body));
+    expect(body.model).toBe("nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free");
+    expect(body.messages[0].content[1]).toEqual({
+      type: "input_audio",
+      input_audio: { data: "d2ViLWF1ZGlv", format: "webm" },
+    });
   });
 });

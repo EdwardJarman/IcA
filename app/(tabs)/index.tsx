@@ -1,4 +1,12 @@
 import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system/legacy";
+import {
+  RecordingPresets,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+  useAudioRecorder,
+  useAudioRecorderState,
+} from "expo-audio";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -15,6 +23,7 @@ import {
 } from "react-native";
 
 import { BotCreateSheet } from "@/components/bot-create-sheet";
+import { ComposerModelPicker } from "@/components/composer-model-picker";
 import { RookLogo } from "@/components/rook-logo";
 import {
   Avatar,
@@ -33,6 +42,7 @@ import { botDropTargetProps, useBotDrag } from "@/lib/bot-drag";
 import { useRookNotifications } from "@/lib/rook-notifications";
 import { trpc } from "@/lib/trpc";
 import { tint } from "@/lib/ui";
+import { defaultModelForProvider, modelMatchesProvider } from "@/lib/ai-provider";
 import { approvalReason, fileSizeLabel, requiresApproval } from "@/lib/workroom-helpers";
 import { useWorkroom, type Bot, type TaskStatus, type WorkTask } from "@/lib/workroom-store";
 
@@ -67,6 +77,10 @@ export default function ChatScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [taskOpen, setTaskOpen] = useState<WorkTask | null>(null);
   const replyMutation = trpc.workroom.reply.useMutation();
+  const voiceMutation = trpc.voice.transcribe.useMutation();
+  const modelCatalog = trpc.ai.models.useQuery(undefined, { staleTime: 5 * 60 * 1000, retry: 1 });
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recorderState = useAudioRecorderState(audioRecorder, 250);
   const { preferences: notificationPreferences, sendTaskAlert } = useRookNotifications();
   const threadRef = useRef<ScrollView>(null);
 
@@ -75,6 +89,15 @@ export default function ChatScreen() {
     () => chatBots.find((bot) => bot.id === activeChatBotId) ?? chatBots[0] ?? null,
     [activeChatBotId, chatBots],
   );
+  const resolvedModel = useMemo(() => {
+    if (!activeBot) return undefined;
+    const models = modelCatalog.data?.models ?? [];
+    const selected = models.find((model) => model.id === activeBot.model && modelMatchesProvider(model.id, workroom.aiProvider));
+    if (selected) return selected;
+    if (activeBot.model && modelMatchesProvider(activeBot.model, workroom.aiProvider)) return { id: activeBot.model };
+    return defaultModelForProvider(models, workroom.aiProvider) ??
+      (workroom.aiProvider === "openrouter" ? { id: "openrouter/free" } : undefined);
+  }, [activeBot, modelCatalog.data?.models, workroom.aiProvider]);
 
   /* The whole room reads as one conversation: every message from a Bot that is present. */
   const visibleMessages = useMemo(
@@ -94,6 +117,15 @@ export default function ChatScreen() {
   const handleSend = async () => {
     const clean = composer.trim();
     if (!clean || !activeBot) return;
+    if (!resolvedModel) {
+      Alert.alert(
+        "No model available",
+        workroom.aiProvider === "chatgpt"
+          ? "Reconnect ChatGPT or switch to OpenRouter from Account."
+          : "Rook could not load an OpenRouter model. Please try again.",
+      );
+      return;
+    }
     const requiresReview = requiresApproval(clean);
     const task = workroom.addTask({
       botId: activeBot.id,
@@ -138,7 +170,7 @@ export default function ChatScreen() {
         botName: activeBot.name,
         botRole: activeBot.role,
         botPurpose: activeBot.purpose,
-        model: activeBot.model,
+        model: resolvedModel.id,
         message: clean,
         recentContext: visibleMessages.slice(-6).map((message) => ({ author: message.author, body: message.body })),
       });
@@ -211,13 +243,48 @@ export default function ChatScreen() {
     }
   };
 
+  const handleVoice = async () => {
+    if (voiceMutation.isPending) return;
+    if (recorderState.isRecording) {
+      try {
+        await audioRecorder.stop();
+        await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+        const uri = audioRecorder.uri;
+        if (!uri) throw new Error("The recording file was not created.");
+        const data = await audioToBase64(uri);
+        if (data.length > 12_000_000) throw new Error("That voice note is too long. Keep recordings under one minute.");
+        const result = await voiceMutation.mutateAsync({
+          data,
+          format: Platform.OS === "web" ? "webm" : "m4a",
+        });
+        setComposer((current) => [current.trim(), result.text.trim()].filter(Boolean).join(current.trim() ? " " : ""));
+      } catch (error) {
+        Alert.alert("Voice input unavailable", error instanceof Error ? error.message : "Rook could not transcribe that recording.");
+      }
+      return;
+    }
+
+    try {
+      const permission = await requestRecordingPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert("Microphone permission needed", "Allow microphone access to dictate a message to Rook.");
+        return;
+      }
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      await audioRecorder.prepareToRecordAsync();
+      audioRecorder.record();
+    } catch {
+      Alert.alert("Microphone unavailable", "Rook could not start recording on this device.");
+    }
+  };
+
   const changeTaskState = (status: TaskStatus) => {
     if (!taskOpen) return;
     workroom.updateTaskStatus(taskOpen.id, status, status === "Cancelled" ? "This task will not take further actions." : taskOpen.nextAction);
     setTaskOpen({ ...taskOpen, status });
   };
 
-  const canSend = Boolean(composer.trim()) && !replyMutation.isPending;
+  const canSend = Boolean(composer.trim()) && !recorderState.isRecording && !replyMutation.isPending && !voiceMutation.isPending;
   const roomHasBots = chatBots.length > 0;
 
   return (
@@ -596,88 +663,86 @@ export default function ChatScreen() {
               ) : null}
             </View>
 
-            {/* Composer — a calm, minimal capsule above the home indicator. */}
-            <View
-              style={{
-                backgroundColor: colors.canvas,
-                paddingHorizontal: 14,
-                paddingTop: 8,
-                paddingBottom: 10,
-              }}
-            >
+            {/* Composer — a two-tier rounded pill inspired by the supplied reference. */}
+            <View style={{ backgroundColor: colors.canvas, paddingHorizontal: 14, paddingTop: 8, paddingBottom: 10 }}>
               <View
                 style={{
-                  flexDirection: "row",
-                  alignItems: "flex-end",
-                  gap: 6,
-                  borderRadius: 26,
+                  borderRadius: 28,
                   borderWidth: 1,
                   borderColor: colors.line,
                   backgroundColor: colors.surface,
-                  paddingLeft: 6,
-                  paddingRight: 6,
-                  paddingVertical: 6,
+                  paddingHorizontal: 12,
+                  paddingTop: 10,
+                  paddingBottom: 9,
                   maxWidth: 760,
                   width: "100%",
                   alignSelf: "center",
+                  gap: 5,
                 }}
               >
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Attach file"
-                  onPress={() => void handleAttach()}
-                  style={({ pressed }) => [
-                    {
-                      width: 36,
-                      height: 36,
-                      borderRadius: 18,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      opacity: pressed ? 0.55 : 1,
-                    },
-                  ]}
-                >
-                  <MaterialIcons name="add" size={22} color={colors.textFaint} />
-                </Pressable>
                 <TextInput
                   value={composer}
                   onChangeText={setComposer}
-                  placeholder={`Message ${activeBot?.name ?? "your Bot"}`}
+                  placeholder="Type your message here…"
                   placeholderTextColor={colors.textFaint}
                   multiline
+                  editable={!recorderState.isRecording}
                   style={{
-                    flex: 1,
-                    minHeight: 36,
-                    maxHeight: 108,
+                    minHeight: 42,
+                    maxHeight: 112,
                     color: colors.text,
                     fontSize: 15.5,
-                    lineHeight: 21,
-                    paddingTop: Platform.OS === "ios" ? 8 : 7,
-                    paddingBottom: 7,
-                    paddingHorizontal: 4,
-                    textAlignVertical: "center",
+                    lineHeight: 22,
+                    paddingTop: Platform.OS === "ios" ? 5 : 3,
+                    paddingBottom: 5,
+                    paddingHorizontal: 2,
+                    textAlignVertical: "top",
                   }}
                   accessibilityLabel={`Message ${activeBot?.name ?? "your Bot"}`}
                 />
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Send message"
-                  onPress={() => void handleSend()}
-                  disabled={!canSend}
-                  style={({ pressed }) => [
-                    {
-                      width: 36,
-                      height: 36,
-                      borderRadius: 18,
-                      backgroundColor: canSend ? colors.ink : colors.surfaceAlt,
+
+                <View style={{ minHeight: 42, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                  <View style={{ flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 2 }}>
+                    <ComposerControl icon="attach-file" label="Upload a file" onPress={() => void handleAttach()} />
+                    <ComposerControl icon="add" label="Add a Bot" onPress={() => setPickerOpen(true)} />
+                    <ComposerModelPicker
+                      value={resolvedModel?.id || activeBot?.model || ""}
+                      provider={workroom.aiProvider}
+                      onChange={(model) => activeBot && workroom.updateBotModel(activeBot.id, model)}
+                    />
+                  </View>
+
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={canSend ? "Send message" : recorderState.isRecording ? "Stop recording" : "Record voice message"}
+                    onPress={() => canSend ? void handleSend() : void handleVoice()}
+                    disabled={replyMutation.isPending || voiceMutation.isPending}
+                    style={({ pressed }) => ({
+                      width: 42,
+                      height: 42,
+                      borderRadius: 21,
+                      backgroundColor: canSend ? colors.ink : recorderState.isRecording ? colors.coral : colors.canvas,
+                      borderWidth: canSend || recorderState.isRecording ? 0 : 1,
+                      borderColor: colors.lineStrong,
                       alignItems: "center",
                       justifyContent: "center",
-                      opacity: pressed && canSend ? 0.75 : 1,
-                    },
-                  ]}
-                >
-                  <MaterialIcons name="arrow-upward" size={19} color={canSend ? colors.onInk : colors.textFaint} />
-                </Pressable>
+                      opacity: replyMutation.isPending || voiceMutation.isPending ? 0.5 : pressed ? 0.7 : 1,
+                    })}
+                  >
+                    <MaterialIcons
+                      name={canSend ? "arrow-upward" : recorderState.isRecording ? "stop" : voiceMutation.isPending ? "more-horiz" : "mic"}
+                      size={canSend ? 20 : 21}
+                      color={canSend || recorderState.isRecording ? colors.onInk : colors.text}
+                    />
+                  </Pressable>
+                </View>
+
+                {recorderState.isRecording ? (
+                  <View style={{ position: "absolute", left: 15, top: 13, flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: colors.surface, paddingRight: 8 }}>
+                    <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: colors.coral }} />
+                    <Text style={{ color: colors.coral, fontSize: 11.5, fontWeight: "700" }}>Recording {formatRecordingTime(recorderState.durationMillis)}</Text>
+                  </View>
+                ) : null}
               </View>
             </View>
           </>
@@ -931,4 +996,55 @@ function FileChip({ name }: { name: string }) {
       <Text numberOfLines={1} style={{ color: colors.mint, fontSize: 11.5, fontWeight: "600" }}>{name}</Text>
     </View>
   );
+}
+
+function ComposerControl({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: "attach-file" | "add";
+  label: string;
+  onPress: () => void;
+}) {
+  const { colors } = useRookTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        alignItems: "center",
+        justifyContent: "center",
+        opacity: pressed ? 0.5 : 1,
+      })}
+    >
+      <MaterialIcons name={icon} size={icon === "add" ? 21 : 19} color={colors.textFaint} />
+    </Pressable>
+  );
+}
+
+function formatRecordingTime(durationMillis: number) {
+  const totalSeconds = Math.max(0, Math.floor(durationMillis / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = String(totalSeconds % 60).padStart(2, "0");
+  return `${minutes}:${seconds}`;
+}
+
+async function audioToBase64(uri: string): Promise<string> {
+  if (Platform.OS !== "web") {
+    return FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+  }
+  const response = await fetch(uri);
+  if (!response.ok) throw new Error("Rook could not read the recorded audio.");
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+  }
+  return btoa(binary);
 }
