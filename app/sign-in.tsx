@@ -3,6 +3,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useState } from "react";
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "react-native";
 
+import { RookLogo } from "@/components/rook-logo";
 import { useRookTheme } from "@/components/rook-primitives";
 import { ScreenContainer } from "@/components/screen-container";
 
@@ -28,7 +29,7 @@ export default function SignInScreen() {
     <ScreenContainer edges={["top", "bottom", "left", "right"]} containerClassName="bg-background" className="flex-1">
       <View style={styles.screen}>
         <View style={[styles.mark, { backgroundColor: colors.ink }]}>
-          <Text style={{ color: colors.onInk, fontSize: 32, fontWeight: "800" }}>R</Text>
+          <RookLogo size={54} color={colors.onInk} />
         </View>
         <Text style={[styles.wordmark, { color: colors.text }]}>Rook</Text>
         <Text style={[styles.title, { color: colors.text }]}>A small team for{"\n"}your real work.</Text>

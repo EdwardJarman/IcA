@@ -15,6 +15,7 @@ import {
 } from "react-native";
 
 import { BotCreateSheet } from "@/components/bot-create-sheet";
+import { RookLogo } from "@/components/rook-logo";
 import {
   Avatar,
   EmptyState,
@@ -216,7 +217,7 @@ export default function ChatScreen() {
                 justifyContent: "center",
               }}
             >
-              <Text style={{ color: colors.onInk, fontSize: 16, fontWeight: "800" }}>R</Text>
+              <RookLogo size={24} color={colors.onInk} />
             </View>
             <Text style={{ color: colors.text, fontSize: 16, fontWeight: "700", letterSpacing: -0.3 }}>Rook</Text>
           </View>
@@ -263,7 +264,7 @@ export default function ChatScreen() {
                   marginBottom: 26,
                 }}
               >
-                <Text style={{ color: colors.onInk, fontSize: 34, fontWeight: "800" }}>R</Text>
+                <RookLogo size={56} color={colors.onInk} />
               </View>
               <Text style={{ color: colors.text, fontSize: 26, lineHeight: 32, fontWeight: "700", letterSpacing: -0.8, textAlign: "center" }}>
                 Start with one good Bot.

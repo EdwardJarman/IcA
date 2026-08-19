@@ -5,6 +5,7 @@ import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-n
 
 import { BotCreateSheet } from "@/components/bot-create-sheet";
 import { GlassSurface, useGlassTone } from "@/components/liquid-glass";
+import { RookLogo } from "@/components/rook-logo";
 import { Avatar } from "@/components/rook-primitives";
 import { useAuth } from "@/hooks/use-auth";
 import { botDragSourceProps, useBotDrag } from "@/lib/bot-drag";
@@ -97,7 +98,7 @@ export function RookDesktopSidebar({ navigation }: BottomTabBarProps) {
                 justifyContent: "center",
               }}
             >
-              <Text style={{ color: colors.onInk, fontSize: 15, fontWeight: "800" }}>R</Text>
+              <RookLogo size={22} color={colors.onInk} />
             </View>
             <Text style={{ color: colors.text, fontSize: 15.5, fontWeight: "700", letterSpacing: -0.3 }}>Rook</Text>
           </View>

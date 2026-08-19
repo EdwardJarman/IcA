@@ -20,6 +20,7 @@ import {
 } from "@/components/bot-identity-picker";
 import { BotIdentityMark } from "@/components/bot-orb";
 import { GlassSurface } from "@/components/liquid-glass";
+import { RookLogo } from "@/components/rook-logo";
 import { Field, useRookTheme } from "@/components/rook-primitives";
 import { tint } from "@/lib/ui";
 import { useWorkroom, type Bot } from "@/lib/workroom-store";
@@ -157,9 +158,7 @@ export function BotCreateSheet({
                     <View
                       style={[styles.mark, { backgroundColor: colors.ink }]}
                     >
-                      <Text style={[styles.markText, { color: colors.onInk }]}>
-                        R
-                      </Text>
+                      <RookLogo size={24} color={colors.onInk} />
                     </View>
                   ) : (
                     <BotIdentityMark icon={icon} color={color} size={32} />
@@ -418,10 +417,6 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     alignItems: "center",
     justifyContent: "center",
-  },
-  markText: {
-    fontSize: 14,
-    fontWeight: "800",
   },
   closeButton: {
     width: 36,

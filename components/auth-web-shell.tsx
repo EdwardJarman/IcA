@@ -1,6 +1,7 @@
 import { type ReactNode } from "react";
 import { Image, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
+import { RookLogo } from "@/components/rook-logo";
 import { useRookTheme } from "@/components/rook-primitives";
 
 const bloomImage = require("@/assets/images/bloom-background.webp");
@@ -16,7 +17,7 @@ export function AuthWebShell({ eyebrow, title, detail, children }: { eyebrow: st
         <View style={styles.authContent}>
           <View style={styles.brandRow}>
             <View style={[styles.brandMark, { backgroundColor: colors.ink }]}>
-              <Text style={{ color: colors.onInk, fontSize: 16, fontWeight: "800" }}>R</Text>
+              <RookLogo size={25} color={colors.onInk} />
             </View>
             <Text style={[styles.wordmark, { color: colors.text }]}>Rook</Text>
           </View>
