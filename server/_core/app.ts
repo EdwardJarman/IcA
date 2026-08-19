@@ -2,6 +2,7 @@ import express from "express";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 
 import { appRouter } from "../routers";
+import { getAiBackendStatus } from "../ai";
 import { createContext } from "./context";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
@@ -46,6 +47,22 @@ export function createApp() {
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, timestamp: Date.now() });
+  });
+
+  app.get("/api/health/ai", async (_req, res) => {
+    try {
+      const status = await getAiBackendStatus();
+      res.status(status.operational ? 200 : 503).json(status);
+    } catch {
+      res.status(503).json({
+        provider: "openrouter",
+        configured: Boolean(process.env.OPENROUTER_API_KEY),
+        operational: false,
+        freeModels: 0,
+        dailyFreeRequestAllowance: null,
+        message: "OpenRouter health check failed.",
+      });
+    }
   });
 
   app.use(
