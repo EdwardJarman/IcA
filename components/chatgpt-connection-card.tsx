@@ -21,10 +21,25 @@ type LoginResponse = SessionResponse & {
   interval?: number;
 };
 
+class ChatGPTRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly retryAfterSeconds?: number,
+  ) {
+    super(message);
+    this.name = "ChatGPTRequestError";
+  }
+}
+
 export function ChatGPTConnectionCard() {
   const { colors, dark } = useRookTheme();
   const { getToken } = useClerkAuth();
   const utils = trpc.useUtils();
+  const getTokenRef = useRef(getToken);
+  const utilsRef = useRef(utils);
+  getTokenRef.current = getToken;
+  utilsRef.current = utils;
   const [session, setSession] = useState<SessionResponse>({ status: "unauthenticated" });
   const [loading, setLoading] = useState(true);
   const [consenting, setConsenting] = useState(false);
@@ -33,9 +48,11 @@ export function ChatGPTConnectionCard() {
   const [modelCount, setModelCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mounted = useRef(true);
+  const pollFailures = useRef(0);
 
   const request = useCallback(async <T,>(path: string, init?: RequestInit): Promise<T> => {
-    const token = await getToken();
+    const token = await getTokenRef.current();
     if (!token) throw new Error("Sign in to Rook first.");
     const response = await fetch(`${getApiBaseUrl()}/api/chatgpt${path}`, {
       ...init,
@@ -43,19 +60,28 @@ export function ChatGPTConnectionCard() {
       credentials: "include",
     });
     const body = await response.json().catch(() => ({})) as T & { message?: string };
-    if (!response.ok) throw new Error(body.message || `ChatGPT request failed (${response.status}).`);
+    if (!response.ok) {
+      const retryAfter = Number(response.headers.get("retry-after"));
+      throw new ChatGPTRequestError(
+        body.message || `ChatGPT request failed (${response.status}).`,
+        response.status,
+        Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined,
+      );
+    }
     return body;
-  }, [getToken]);
+  }, []);
 
   const loadModels = useCallback(async () => {
     const data = await request<{ models?: string[] }>("/models");
+    if (!mounted.current) return;
     setModelCount(data.models?.length ?? 0);
-    await utils.ai.models.invalidate();
-  }, [request, utils.ai.models]);
+    await utilsRef.current.ai.models.invalidate();
+  }, [request]);
 
   const refreshSession = useCallback(async () => {
     try {
       const data = await request<SessionResponse>("/session");
+      if (!mounted.current) return;
       setSession(data.status === "pending" ? { status: "unauthenticated" } : data);
       if (data.status === "authenticated") await loadModels();
     } catch (cause) {
@@ -66,8 +92,10 @@ export function ChatGPTConnectionCard() {
   }, [loadModels, request]);
 
   useEffect(() => {
+    mounted.current = true;
     void refreshSession();
     return () => {
+      mounted.current = false;
       if (pollTimer.current) clearTimeout(pollTimer.current);
     };
   }, [refreshSession]);
@@ -75,6 +103,8 @@ export function ChatGPTConnectionCard() {
   const poll = useCallback(async (intervalSeconds = 3) => {
     try {
       const data = await request<SessionResponse>("/status");
+      if (!mounted.current) return;
+      pollFailures.current = 0;
       if (data.status === "authenticated") {
         setSession(data);
         setLogin(null);
@@ -89,12 +119,25 @@ export function ChatGPTConnectionCard() {
         return;
       }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not check ChatGPT authorization.");
+      if (!mounted.current) return;
+      pollFailures.current += 1;
+      const rateLimited = cause instanceof ChatGPTRequestError && (cause.status === 429 || cause.status === 503);
+      setError(rateLimited
+        ? "ChatGPT is temporarily rate limited. Rook will retry automatically."
+        : cause instanceof Error ? cause.message : "Could not check ChatGPT authorization.");
+      const retryAfter = cause instanceof ChatGPTRequestError ? cause.retryAfterSeconds : undefined;
+      const delaySeconds = rateLimited
+        ? Math.max(retryAfter ?? 15, Math.min(60, pollFailures.current * 10))
+        : Math.max(intervalSeconds, 5);
+      pollTimer.current = setTimeout(() => void poll(intervalSeconds), delaySeconds * 1000);
+      return;
     }
     pollTimer.current = setTimeout(() => void poll(intervalSeconds), Math.max(2500, intervalSeconds * 1000));
   }, [loadModels, request]);
 
   const beginLogin = async () => {
+    if (pollTimer.current) clearTimeout(pollTimer.current);
+    pollFailures.current = 0;
     setConsenting(false);
     setConnecting(true);
     setError(null);
@@ -128,7 +171,7 @@ export function ChatGPTConnectionCard() {
       setSession({ status: "unauthenticated" });
       setLogin(null);
       setModelCount(0);
-      await utils.ai.models.invalidate();
+      await utilsRef.current.ai.models.invalidate();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not disconnect ChatGPT.");
     } finally {

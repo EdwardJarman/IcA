@@ -19,6 +19,7 @@ const ALLOWED_EXTERNAL_ROUTES = new Set(["/login", "/status", "/session", "/logo
 
 type StoredEntry = { payload: string; expiresAt?: number };
 type PrivateMetadata = Record<string, unknown>;
+type StatusError = Error & { status?: number; statusCode?: number; code?: string };
 
 type ChatGPTHandlerLike = {
   handler(request: Request): Promise<Response>;
@@ -209,7 +210,24 @@ export async function handleChatGPTRoute(request: ExpressRequest, response: Expr
     response.send(Buffer.from(await result.arrayBuffer()));
   } catch (error) {
     const message = error instanceof Error ? error.message : "ChatGPT connection failed.";
-    response.status(message.includes("Sign in") || message.includes("session") ? 401 : 503).json({ error: "chatgpt_unavailable", message });
+    const statusError = error as StatusError;
+    const rateLimited = statusError.status === 429 || statusError.statusCode === 429 || /too many requests|rate.?limit/i.test(message);
+    const status = rateLimited
+      ? 429
+      : message.includes("Sign in") || message.includes("session")
+        ? 401
+        : 503;
+    if (rateLimited) response.setHeader("retry-after", "15");
+    console.warn("[ChatGPT connection] Request failed", {
+      route,
+      status,
+      errorName: error instanceof Error ? error.name : "UnknownError",
+      errorCode: statusError.code,
+    });
+    response.status(status).json({
+      error: rateLimited ? "chatgpt_rate_limited" : "chatgpt_unavailable",
+      message: rateLimited ? "ChatGPT is temporarily rate limited. Please wait a moment while Rook retries." : message,
+    });
   }
 }
 
