@@ -4,13 +4,7 @@ import { useRookTheme } from "@/lib/ui";
 
 const rookLogo = require("@/assets/images/rook-logo.png");
 
-export function RookLogo({
-  size = 32,
-  color,
-}: {
-  size?: number;
-  color?: string;
-}) {
+export function RookLogo({ size = 32, color }: { size?: number; color?: string }) {
   const { colors } = useRookTheme();
 
   return (

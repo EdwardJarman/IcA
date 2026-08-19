@@ -15,9 +15,7 @@ describe("onboarding recommendations", () => {
     expect(recommendedOnboardingTemplate(["research"]).id).toBe("scout");
     expect(recommendedOnboardingTemplate(["operations"]).id).toBe("steward");
     expect(recommendedOnboardingTemplate(["communication"]).id).toBe("steward");
-    expect(recommendedOnboardingTemplate(["product", "research"]).id).toBe(
-      "patch",
-    );
+    expect(recommendedOnboardingTemplate(["product", "research"]).id).toBe("patch");
   });
 
   it("ships every first-Bot template with a persisted orb identity and safety boundary", () => {

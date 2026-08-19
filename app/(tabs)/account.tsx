@@ -4,6 +4,8 @@ import * as Sharing from "expo-sharing";
 import { type ComponentProps, type ReactNode, useState } from "react";
 import { Alert, Platform, Pressable, ScrollView, Text, View } from "react-native";
 
+import { AiBackendCard } from "@/components/ai-backend-card";
+import { ExcelConnectionCard } from "@/components/excel-connection-card";
 import { Avatar, Card, ScreenHeader, SectionHeader, StatusPill, Switch } from "@/components/rook-primitives";
 import { ScreenContainer } from "@/components/screen-container";
 import { useAuth } from "@/hooks/use-auth";
@@ -27,6 +29,14 @@ export default function AccountScreen() {
       >
         <ScreenHeader title="Account" lead="Your space, on your terms." />
         <AppearanceCard />
+        <View style={{ gap: 12 }}>
+          <SectionHeader title="AI backend" caption="Live free models, selected separately for every Bot." />
+          <AiBackendCard />
+        </View>
+        <View style={{ gap: 12 }}>
+          <SectionHeader title="Connected apps" caption="Give your Bots useful access without giving up control." />
+          <ExcelConnectionCard />
+        </View>
         <ProfileAndStorage syncStatus={syncStatus} />
       </ScrollView>
     </ScreenContainer>

@@ -2,6 +2,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { AiModelSelector } from "@/components/ai-model-selector";
 import { BotCreateSheet } from "@/components/bot-create-sheet";
 import {
   Avatar,
@@ -21,7 +22,7 @@ import { useWorkroom, type Bot } from "@/lib/workroom-store";
 
 export default function BotsScreen() {
   const { colors } = useRookTheme();
-  const { bots, selectedBotId, selectBot, updateBotStatus } = useWorkroom();
+  const { bots, selectedBotId, selectBot, updateBotStatus, updateBotModel } = useWorkroom();
   const [openBot, setOpenBot] = useState<Bot | null>(null);
   const [newOpen, setNewOpen] = useState(false);
   const dockScroll = useDockScroll();
@@ -124,6 +125,13 @@ export default function BotsScreen() {
             <Text style={{ color: colors.textSoft, fontSize: 13.5, lineHeight: 20, marginTop: 14 }}>{openBot.purpose}</Text>
 
             <View style={{ gap: 12, marginTop: 18 }}>
+              <AiModelSelector
+                value={openBot.model || "openrouter/free"}
+                onChange={(model) => {
+                  updateBotModel(openBot.id, model);
+                  setOpenBot({ ...openBot, model, lastActive: "Model updated" });
+                }}
+              />
               <InfoBlock label="Memory" value={openBot.memory} />
               <InfoBlock label="Pause point" value={openBot.approvalRule} />
             </View>

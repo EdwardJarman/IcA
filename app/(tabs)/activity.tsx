@@ -1,5 +1,6 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { useState } from "react";
+import { Alert, Pressable, ScrollView, Text, View } from "react-native";
 
 import {
   Avatar,
@@ -12,15 +13,43 @@ import {
 } from "@/components/rook-primitives";
 import { ScreenContainer } from "@/components/screen-container";
 import { useDockScroll } from "@/lib/dock-visibility";
+import { trpc } from "@/lib/trpc";
 import { tint, type ToneName } from "@/lib/ui";
-import { useWorkroom } from "@/lib/workroom-store";
+import { useWorkroom, type Approval } from "@/lib/workroom-store";
 
 export default function ActivityScreen() {
   const { colors } = useRookTheme();
-  const { approvals, bots, activity, notifications, resolveApproval, markNotificationsRead } = useWorkroom();
+  const { approvals, bots, activity, notifications, resolveApproval, markNotificationsRead, updateTaskStatus, addMessage, addActivity } = useWorkroom();
+  const resolveExcelAction = trpc.excel.resolveAction.useMutation();
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
   const pendingApprovals = approvals.filter((approval) => approval.state === "Pending");
   const unreadCount = notifications.filter((notification) => !notification.read).length;
   const dockScroll = useDockScroll();
+
+  const decide = async (approval: Approval, decision: "approve" | "decline") => {
+    if (resolvingId) return;
+    if (!approval.externalActionId) {
+      resolveApproval(approval.id, decision === "approve" ? "Approved" : "Declined");
+      return;
+    }
+    setResolvingId(approval.id);
+    try {
+      const result = await resolveExcelAction.mutateAsync({ actionId: approval.externalActionId, decision });
+      resolveApproval(approval.id, decision === "approve" ? "Approved" : "Declined");
+      if (result.executed) {
+        if (approval.taskId) updateTaskStatus(approval.taskId, "Completed", "The approved Excel change was applied successfully.");
+        addMessage({ botId: approval.botId, author: "bot", body: `Excel updated. ${result.summary}`, kind: "result", taskId: approval.taskId });
+        addActivity({ title: "Excel change completed", detail: result.summary, tone: "mint" });
+      } else {
+        if (approval.taskId) updateTaskStatus(approval.taskId, "Cancelled", "The proposed Excel change was declined.");
+        addActivity({ title: "Excel change declined", detail: result.summary, tone: "coral" });
+      }
+    } catch (error) {
+      Alert.alert("Excel change not completed", error instanceof Error ? error.message : "Rook could not complete this Excel action. Nothing was changed.");
+    } finally {
+      setResolvingId(null);
+    }
+  };
 
   return (
     <ScreenContainer containerClassName="bg-background" className="flex-1" edges={["top", "left", "right"]}>
@@ -94,11 +123,12 @@ export default function ActivityScreen() {
                     </View>
                     <Text style={{ color: colors.textSoft, fontSize: 13, lineHeight: 19 }}>{approval.detail}</Text>
                     <View style={{ flexDirection: "row", gap: 10 }}>
-                      <SecondaryButton label="Decline" onPress={() => resolveApproval(approval.id, "Declined")} destructive />
+                      <SecondaryButton label={resolvingId === approval.id ? "Working…" : "Decline"} onPress={() => void decide(approval, "decline")} destructive />
                       <Pressable
                         accessibilityRole="button"
                         accessibilityLabel={`Approve ${approval.title}`}
-                        onPress={() => resolveApproval(approval.id, "Approved")}
+                        onPress={() => void decide(approval, "approve")}
+                        disabled={Boolean(resolvingId)}
                         style={({ pressed }) => [
                           {
                             flex: 1,
@@ -112,9 +142,9 @@ export default function ActivityScreen() {
                           },
                           pressed && { opacity: 0.78 },
                         ]}
-                      >
-                        <MaterialIcons name="check" size={17} color={colors.onInk} />
-                        <Text style={{ color: colors.onInk, fontSize: 15, fontWeight: "600" }}>Approve</Text>
+                        >
+                          <MaterialIcons name="check" size={17} color={colors.onInk} />
+                        <Text style={{ color: colors.onInk, fontSize: 15, fontWeight: "600" }}>{resolvingId === approval.id ? "Applying…" : "Approve"}</Text>
                       </Pressable>
                     </View>
                   </View>

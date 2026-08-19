@@ -133,29 +133,60 @@ export default function ChatScreen() {
     try {
       workroom.updateTaskStatus(task.id, "Working", "Finishing the requested work.");
       const response = await replyMutation.mutateAsync({
+        botId: activeBot.id,
+        taskId: task.id,
         botName: activeBot.name,
         botRole: activeBot.role,
         botPurpose: activeBot.purpose,
+        model: activeBot.model,
         message: clean,
         recentContext: visibleMessages.slice(-6).map((message) => ({ author: message.author, body: message.body })),
       });
-      workroom.updateTaskStatus(task.id, "Completed", "Result returned. You can refine or start a new task.");
+      if (response.approvals.length) {
+        workroom.updateTaskStatus(task.id, "Approval required", "Review the exact Excel change in Updates.");
+        response.approvals.forEach((approval) => workroom.addApproval({
+          botId: activeBot.id,
+          taskId: task.id,
+          externalActionId: approval.actionId,
+          title: approval.title,
+          detail: approval.detail,
+          risk: approval.risk,
+        }));
+        if (!response.pushDelivery.accepted)
+          void sendTaskAlert({
+            kind: "approval",
+            title: "Excel change needs approval",
+            body: `${activeBot.name} prepared a workbook change`,
+            url: "/activity",
+          });
+      } else {
+        workroom.updateTaskStatus(task.id, "Completed", "Result returned. You can refine or start a new task.");
+      }
       workroom.updateBotStatus(activeBot.id, "Ready");
-      workroom.addMessage({ botId: activeBot.id, author: "bot", body: response.text, taskId: task.id });
-      if (notificationPreferences.completion && !response.pushDelivery.accepted)
+      workroom.addMessage({
+        botId: activeBot.id,
+        author: "bot",
+        body: response.text,
+        kind: response.approvals.length ? "approval" : "message",
+        taskId: task.id,
+      });
+      if (!response.approvals.length && notificationPreferences.completion && !response.pushDelivery.accepted)
         void sendTaskAlert({
           kind: "completion",
           title: `${activeBot.name} completed a task`,
           body: response.text.slice(0, 170),
           url: "/",
         });
-    } catch {
-      workroom.updateTaskStatus(task.id, "Partially completed", "The response service is unavailable. Try again when model capacity returns.");
+    } catch (error) {
+      const message = error instanceof Error && error.message
+        ? error.message
+        : "Free AI capacity is unavailable right now. Please try again shortly.";
+      workroom.updateTaskStatus(task.id, "Partially completed", message);
       workroom.updateBotStatus(activeBot.id, "Ready");
       workroom.addMessage({
         botId: activeBot.id,
         author: "bot",
-        body: "I saved your request, but the response service is unavailable right now. Nothing external was attempted. Please retry shortly.",
+        body: `${message} Nothing external was attempted.`,
         taskId: task.id,
       });
     }
@@ -240,6 +271,7 @@ export default function ChatScreen() {
                 />
               ) : null}
             </View>
+            <IconButton icon="person-outline" label="Open account and connected apps" onPress={() => router.navigate("/account" as never)} />
             <IconButton icon="add" label="Add a Bot" onPress={() => setPickerOpen(true)} tone="accent" />
           </View>
         </View>

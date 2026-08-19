@@ -18,6 +18,7 @@ import {
   DEFAULT_BOT_COLOR,
   DEFAULT_BOT_ICON,
 } from "@/components/bot-identity-picker";
+import { AiModelSelector } from "@/components/ai-model-selector";
 import { BotIdentityMark } from "@/components/bot-orb";
 import { GlassSurface } from "@/components/liquid-glass";
 import { RookLogo } from "@/components/rook-logo";
@@ -71,6 +72,7 @@ export function BotCreateSheet({
   const [approvalRule, setApprovalRule] = useState(DEFAULT_APPROVAL);
   const [color, setColor] = useState(DEFAULT_BOT_COLOR);
   const [icon, setIcon] = useState(DEFAULT_BOT_ICON);
+  const [model, setModel] = useState("openrouter/free");
 
   const panelWidth = Math.min(Math.max(width - 28, 296), 520);
   const panelHeight = Math.min(height - 48, width < 600 ? 640 : 600);
@@ -84,6 +86,7 @@ export function BotCreateSheet({
     setApprovalRule(DEFAULT_APPROVAL);
     setColor(DEFAULT_BOT_COLOR);
     setIcon(DEFAULT_BOT_ICON);
+    setModel("openrouter/free");
   };
 
   const close = () => {
@@ -117,6 +120,7 @@ export function BotCreateSheet({
       approvalRule: approvalRule.trim() || DEFAULT_APPROVAL,
       color,
       icon,
+      model,
     });
     reset();
     onClose();
@@ -294,6 +298,7 @@ export function BotCreateSheet({
                         borderColor: colors.lineStrong,
                       }}
                     />
+                    <AiModelSelector value={model} onChange={setModel} />
                     <View
                       style={[
                         styles.summaryCard,

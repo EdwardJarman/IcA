@@ -49,6 +49,45 @@ export const userNotificationPreferences = mysqlTable("userNotificationPreferenc
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+export const microsoftConnections = mysqlTable("microsoftConnections", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  microsoftUserId: varchar("microsoftUserId", { length: 255 }).notNull(),
+  displayName: varchar("displayName", { length: 255 }),
+  email: varchar("email", { length: 320 }),
+  encryptedAccessToken: text("encryptedAccessToken").notNull(),
+  encryptedRefreshToken: text("encryptedRefreshToken").notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  scopes: text("scopes").notNull(),
+  status: mysqlEnum("status", ["connected", "reauthorize"]).default("connected").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const microsoftOAuthStates = mysqlTable("microsoftOAuthStates", {
+  state: varchar("state", { length: 96 }).primaryKey(),
+  userId: int("userId").notNull(),
+  codeVerifier: varchar("codeVerifier", { length: 160 }).notNull(),
+  returnTo: varchar("returnTo", { length: 500 }).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [index("microsoftOAuthStates_user_idx").on(table.userId)]);
+
+export const excelPendingActions = mysqlTable("excelPendingActions", {
+  id: varchar("id", { length: 96 }).primaryKey(),
+  userId: int("userId").notNull(),
+  botClientId: varchar("botClientId", { length: 128 }).notNull(),
+  taskClientId: varchar("taskClientId", { length: 128 }).notNull(),
+  toolName: varchar("toolName", { length: 64 }).notNull(),
+  arguments: json("arguments").notNull(),
+  summary: text("summary").notNull(),
+  state: mysqlEnum("state", ["pending", "executed", "declined", "expired"]).default("pending").notNull(),
+  result: json("result"),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => [index("excelPendingActions_user_idx").on(table.userId), index("excelPendingActions_task_idx").on(table.taskClientId)]);
+
 export const workroomSnapshots = mysqlTable("workroomSnapshots", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().unique(),

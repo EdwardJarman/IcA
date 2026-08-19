@@ -1,6 +1,6 @@
-"use client";
+"use client"
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 
 /**
  * Adapted for Expo web from 23rd.dev Live Orb by @radiumcoders.
@@ -9,41 +9,38 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
  * wrapper was replaced with portable inline DOM styles.
  */
 
-export type LiveOrbVariant = "white" | "black" | "webgl" | "custom";
+export type LiveOrbVariant = "white" | "black" | "webgl" | "custom"
 
 export type LiveOrbProps = {
-  className?: string;
+  className?: string
   /** Edge length in CSS pixels. Default `280`. */
-  size?: number;
+  size?: number
   /** Material preset. Default `"white"`. */
-  variant?: LiveOrbVariant;
+  variant?: LiveOrbVariant
   /** Body hex — used when `variant="custom"`. */
-  color?: string;
+  color?: string
   /** Eye hex — used when `variant="custom"`. */
-  eyeColor?: string;
+  eyeColor?: string
   /** Iridescent stops — used when `variant="webgl"`. */
-  colors?: string[];
+  colors?: string[]
   /** Eyes follow the pointer. Default `true`. */
-  interactive?: boolean;
+  interactive?: boolean
   /** Occasional blink. Default `true`. */
-  blink?: boolean;
-};
+  blink?: boolean
+}
 
-export const WHITE = { color: "#F4F4F5", eyeColor: "#09090B" } as const;
-export const BLACK = { color: "#18181B", eyeColor: "#F4F4F5" } as const;
-export const CUSTOM_DEFAULT = {
-  color: "#7C5CFF",
-  eyeColor: "#FAFAFA",
-} as const;
+export const WHITE = { color: "#F4F4F5", eyeColor: "#09090B" } as const
+export const BLACK = { color: "#18181B", eyeColor: "#F4F4F5" } as const
+export const CUSTOM_DEFAULT = { color: "#7C5CFF", eyeColor: "#FAFAFA" } as const
 /** Violet / foam / dust-rose — stock webgl interior. */
-export const WEBGL_COLORS = ["#7C6AF7", "#7DD3C7", "#E8B4D4"];
+export const WEBGL_COLORS = ["#7C6AF7", "#7DD3C7", "#E8B4D4"]
 
 const VERT = `
 attribute vec2 a_position;
 void main() {
   gl_Position = vec4(a_position, 0.0, 1.0);
 }
-`;
+`
 
 const FRAG = `
 precision highp float;
@@ -182,45 +179,45 @@ void main() {
 
   gl_FragColor = vec4(clamp(col, 0.0, 1.0), edge);
 }
-`;
+`
 
 function hexToRgb(hex: string): [number, number, number] {
-  const h = hex.replace("#", "").trim();
+  const h = hex.replace("#", "").trim()
   const full =
     h.length === 3
       ? h
           .split("")
           .map((c) => c + c)
           .join("")
-      : h.padEnd(6, "0").slice(0, 6);
-  const n = Number.parseInt(full, 16);
-  if (Number.isNaN(n)) return [0.96, 0.96, 0.96];
-  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+      : h.padEnd(6, "0").slice(0, 6)
+  const n = Number.parseInt(full, 16)
+  if (Number.isNaN(n)) return [0.96, 0.96, 0.96]
+  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]
 }
 
 function compile(gl: WebGLRenderingContext, type: number, source: string) {
-  const shader = gl.createShader(type);
-  if (!shader) return null;
-  gl.shaderSource(shader, source);
-  gl.compileShader(shader);
+  const shader = gl.createShader(type)
+  if (!shader) return null
+  gl.shaderSource(shader, source)
+  gl.compileShader(shader)
   if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
     if (process.env.NODE_ENV !== "production") {
       console.warn(
         "LiveOrb: shader failed to compile\n",
-        gl.getShaderInfoLog(shader),
-      );
+        gl.getShaderInfoLog(shader)
+      )
     }
-    gl.deleteShader(shader);
-    return null;
+    gl.deleteShader(shader)
+    return null
   }
-  return shader;
+  return shader
 }
 
 function resolveVariant(
   variant: LiveOrbVariant,
   color?: string,
   eyeColor?: string,
-  colors?: string[],
+  colors?: string[]
 ) {
   if (variant === "black") {
     return {
@@ -228,7 +225,7 @@ function resolveVariant(
       eye: BLACK.eyeColor,
       mode: 0,
       palette: WEBGL_COLORS,
-    };
+    }
   }
   if (variant === "webgl") {
     return {
@@ -236,7 +233,7 @@ function resolveVariant(
       eye: eyeColor ?? "#0C0C10",
       mode: 1,
       palette: colors && colors.length > 0 ? colors : WEBGL_COLORS,
-    };
+    }
   }
   if (variant === "custom") {
     return {
@@ -244,24 +241,24 @@ function resolveVariant(
       eye: eyeColor ?? CUSTOM_DEFAULT.eyeColor,
       mode: 0,
       palette: WEBGL_COLORS,
-    };
+    }
   }
   return {
     body: WHITE.color,
     eye: WHITE.eyeColor,
     mode: 0,
     palette: WEBGL_COLORS,
-  };
+  }
 }
 
 function mixHex(hex: string, toward: string, t: number) {
-  const a = hexToRgb(hex);
-  const b = hexToRgb(toward);
+  const a = hexToRgb(hex)
+  const b = hexToRgb(toward)
   const m = (i: number) =>
     Math.round((a[i]! * (1 - t) + b[i]! * t) * 255)
       .toString(16)
-      .padStart(2, "0");
-  return `#${m(0)}${m(1)}${m(2)}`;
+      .padStart(2, "0")
+  return `#${m(0)}${m(1)}${m(2)}`
 }
 
 /**
@@ -278,11 +275,11 @@ export function LiveOrb({
   interactive = true,
   blink = true,
 }: LiveOrbProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const lookRef = useRef({ x: 0, y: 0.08 });
-  const targetLookRef = useRef({ x: 0, y: 0.08 });
-  const reduceRef = useRef(false);
-  const [hasGl, setHasGl] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const lookRef = useRef({ x: 0, y: 0.08 })
+  const targetLookRef = useRef({ x: 0, y: 0.08 })
+  const reduceRef = useRef(false)
+  const [hasGl, setHasGl] = useState(false)
   const propsRef = useRef({
     variant,
     color,
@@ -290,47 +287,47 @@ export function LiveOrb({
     colors,
     interactive,
     blink,
-  });
+  })
 
-  const resolved = resolveVariant(variant, color, eyeColor, colors);
+  const resolved = resolveVariant(variant, color, eyeColor, colors)
 
   useLayoutEffect(() => {
-    propsRef.current = { variant, color, eyeColor, colors, interactive, blink };
-  }, [variant, color, eyeColor, colors, interactive, blink]);
+    propsRef.current = { variant, color, eyeColor, colors, interactive, blink }
+  }, [variant, color, eyeColor, colors, interactive, blink])
 
   useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    reduceRef.current = mq.matches;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)")
+    reduceRef.current = mq.matches
     const onChange = () => {
-      reduceRef.current = mq.matches;
-    };
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
+      reduceRef.current = mq.matches
+    }
+    mq.addEventListener("change", onChange)
+    return () => mq.removeEventListener("change", onChange)
+  }, [])
 
   useEffect(() => {
-    if (!interactive) return;
+    if (!interactive) return
     const onMove = (e: PointerEvent) => {
-      if (!propsRef.current.interactive) return;
-      const canvas = canvasRef.current;
-      const parent = canvas?.parentElement;
-      if (!parent) return;
-      const rect = parent.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) return;
-      const dx = (e.clientX - (rect.left + rect.width / 2)) / (rect.width / 2);
-      const dy = (rect.top + rect.height / 2 - e.clientY) / (rect.height / 2);
+      if (!propsRef.current.interactive) return
+      const canvas = canvasRef.current
+      const parent = canvas?.parentElement
+      if (!parent) return
+      const rect = parent.getBoundingClientRect()
+      if (rect.width <= 0 || rect.height <= 0) return
+      const dx = (e.clientX - (rect.left + rect.width / 2)) / (rect.width / 2)
+      const dy = (rect.top + rect.height / 2 - e.clientY) / (rect.height / 2)
       targetLookRef.current = {
         x: Math.min(1, Math.max(-1, dx)),
         y: Math.min(1, Math.max(-1, dy)),
-      };
-    };
-    window.addEventListener("pointermove", onMove, { passive: true });
-    return () => window.removeEventListener("pointermove", onMove);
-  }, [interactive]);
+      }
+    }
+    window.addEventListener("pointermove", onMove, { passive: true })
+    return () => window.removeEventListener("pointermove", onMove)
+  }, [interactive])
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const canvas = canvasRef.current
+    if (!canvas) return
 
     const gl = canvas.getContext("webgl", {
       alpha: true,
@@ -339,82 +336,82 @@ export function LiveOrb({
       stencil: false,
       premultipliedAlpha: false,
       powerPreference: "high-performance",
-    });
-    if (!gl) return;
+    })
+    if (!gl) return
 
-    const vs = compile(gl, gl.VERTEX_SHADER, VERT);
-    const fs = compile(gl, gl.FRAGMENT_SHADER, FRAG);
-    if (!vs || !fs) return;
+    const vs = compile(gl, gl.VERTEX_SHADER, VERT)
+    const fs = compile(gl, gl.FRAGMENT_SHADER, FRAG)
+    if (!vs || !fs) return
 
-    const program = gl.createProgram();
-    if (!program) return;
-    gl.attachShader(program, vs);
-    gl.attachShader(program, fs);
-    gl.linkProgram(program);
+    const program = gl.createProgram()
+    if (!program) return
+    gl.attachShader(program, vs)
+    gl.attachShader(program, fs)
+    gl.linkProgram(program)
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
       if (process.env.NODE_ENV !== "production") {
         console.warn(
           "LiveOrb: program failed to link\n",
-          gl.getProgramInfoLog(program),
-        );
+          gl.getProgramInfoLog(program)
+        )
       }
-      return;
+      return
     }
-    gl.useProgram(program);
-    setHasGl(true);
+    gl.useProgram(program)
+    setHasGl(true)
 
-    const buf = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    const buf = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf)
     gl.bufferData(
       gl.ARRAY_BUFFER,
       new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]),
-      gl.STATIC_DRAW,
-    );
-    const loc = gl.getAttribLocation(program, "a_position");
-    gl.enableVertexAttribArray(loc);
-    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+      gl.STATIC_DRAW
+    )
+    const loc = gl.getAttribLocation(program, "a_position")
+    gl.enableVertexAttribArray(loc)
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0)
 
-    const uResolution = gl.getUniformLocation(program, "u_resolution");
-    const uTime = gl.getUniformLocation(program, "u_time");
-    const uSpeed = gl.getUniformLocation(program, "u_speed");
-    const uLook = gl.getUniformLocation(program, "u_look");
-    const uBlink = gl.getUniformLocation(program, "u_blink");
-    const uMode = gl.getUniformLocation(program, "u_mode");
-    const uBody = gl.getUniformLocation(program, "u_body");
-    const uEye = gl.getUniformLocation(program, "u_eye");
-    const uC1 = gl.getUniformLocation(program, "u_c1");
-    const uC2 = gl.getUniformLocation(program, "u_c2");
-    const uC3 = gl.getUniformLocation(program, "u_c3");
+    const uResolution = gl.getUniformLocation(program, "u_resolution")
+    const uTime = gl.getUniformLocation(program, "u_time")
+    const uSpeed = gl.getUniformLocation(program, "u_speed")
+    const uLook = gl.getUniformLocation(program, "u_look")
+    const uBlink = gl.getUniformLocation(program, "u_blink")
+    const uMode = gl.getUniformLocation(program, "u_mode")
+    const uBody = gl.getUniformLocation(program, "u_body")
+    const uEye = gl.getUniformLocation(program, "u_eye")
+    const uC1 = gl.getUniformLocation(program, "u_c1")
+    const uC2 = gl.getUniformLocation(program, "u_c2")
+    const uC3 = gl.getUniformLocation(program, "u_c3")
 
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.enable(gl.BLEND)
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
-    let raf = 0;
-    let running = true;
-    const start = performance.now();
-    let nextBlink = start + 1800 + Math.random() * 2400;
-    let blinkAt = -10_000;
+    let raf = 0
+    let running = true
+    const start = performance.now()
+    let nextBlink = start + 1800 + Math.random() * 2400
+    let blinkAt = -10_000
 
     const resize = () => {
-      const parent = canvas.parentElement;
-      if (!parent) return;
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const w = parent.clientWidth;
-      const h = parent.clientHeight;
-      if (w <= 0 || h <= 0) return;
-      canvas.width = Math.max(1, Math.floor(w * dpr));
-      canvas.height = Math.max(1, Math.floor(h * dpr));
-      canvas.style.width = `${w}px`;
-      canvas.style.height = `${h}px`;
-      gl.viewport(0, 0, canvas.width, canvas.height);
-    };
+      const parent = canvas.parentElement
+      if (!parent) return
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      const w = parent.clientWidth
+      const h = parent.clientHeight
+      if (w <= 0 || h <= 0) return
+      canvas.width = Math.max(1, Math.floor(w * dpr))
+      canvas.height = Math.max(1, Math.floor(h * dpr))
+      canvas.style.width = `${w}px`
+      canvas.style.height = `${h}px`
+      gl.viewport(0, 0, canvas.width, canvas.height)
+    }
 
-    resize();
-    const ro = new ResizeObserver(resize);
-    if (canvas.parentElement) ro.observe(canvas.parentElement);
+    resize()
+    const ro = new ResizeObserver(resize)
+    if (canvas.parentElement) ro.observe(canvas.parentElement)
 
     const tick = (now: number) => {
-      if (!running) return;
+      if (!running) return
 
       const {
         variant: v,
@@ -423,78 +420,78 @@ export function LiveOrb({
         colors: pal,
         interactive: on,
         blink: doBlink,
-      } = propsRef.current;
-      const look = resolveVariant(v, c, e, pal);
-      const time = (now - start) / 1000;
-      const reduce = reduceRef.current;
+      } = propsRef.current
+      const look = resolveVariant(v, c, e, pal)
+      const time = (now - start) / 1000
+      const reduce = reduceRef.current
 
-      const tm = targetLookRef.current;
-      const m = lookRef.current;
+      const tm = targetLookRef.current
+      const m = lookRef.current
       if (on) {
-        m.x += (tm.x - m.x) * 0.16;
-        m.y += (tm.y - m.y) * 0.16;
+        m.x += (tm.x - m.x) * 0.16
+        m.y += (tm.y - m.y) * 0.16
       } else {
-        m.x += (0 - m.x) * 0.12;
-        m.y += (0.08 - m.y) * 0.12;
+        m.x += (0 - m.x) * 0.12
+        m.y += (0.08 - m.y) * 0.12
       }
 
       if (!reduce && doBlink && now >= nextBlink) {
-        blinkAt = now;
-        nextBlink = now + 2200 + Math.random() * 3800;
+        blinkAt = now
+        nextBlink = now + 2200 + Math.random() * 3800
       }
-      const bt = (now - blinkAt) / 1000;
-      let b = 0;
+      const bt = (now - blinkAt) / 1000
+      let b = 0
       if (!reduce && doBlink) {
-        if (bt < 0.055) b = bt / 0.055;
-        else if (bt < 0.1) b = 1;
-        else if (bt < 0.18) b = 1 - (bt - 0.1) / 0.08;
+        if (bt < 0.055) b = bt / 0.055
+        else if (bt < 0.1) b = 1
+        else if (bt < 0.18) b = 1 - (bt - 0.1) / 0.08
       }
-      const body = hexToRgb(look.body);
-      const eye = hexToRgb(look.eye);
+      const body = hexToRgb(look.body)
+      const eye = hexToRgb(look.eye)
       const palette = [0, 1, 2].map((i) =>
-        hexToRgb(look.palette[i % look.palette.length] ?? WEBGL_COLORS[i]!),
-      );
+        hexToRgb(look.palette[i % look.palette.length] ?? WEBGL_COLORS[i]!)
+      )
 
-      gl.clearColor(0, 0, 0, 0);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-      gl.uniform2f(uResolution, canvas.width, canvas.height);
-      gl.uniform1f(uTime, reduce ? 0 : time);
-      gl.uniform1f(uSpeed, reduce ? 0 : 0.55);
-      gl.uniform2f(uLook, m.x, m.y);
-      gl.uniform1f(uBlink, b);
-      gl.uniform1f(uMode, look.mode);
-      gl.uniform3f(uBody, body[0], body[1], body[2]);
-      gl.uniform3f(uEye, eye[0], eye[1], eye[2]);
-      gl.uniform3f(uC1, palette[0]![0], palette[0]![1], palette[0]![2]);
-      gl.uniform3f(uC2, palette[1]![0], palette[1]![1], palette[1]![2]);
-      gl.uniform3f(uC3, palette[2]![0], palette[2]![1], palette[2]![2]);
+      gl.clearColor(0, 0, 0, 0)
+      gl.clear(gl.COLOR_BUFFER_BIT)
+      gl.uniform2f(uResolution, canvas.width, canvas.height)
+      gl.uniform1f(uTime, reduce ? 0 : time)
+      gl.uniform1f(uSpeed, reduce ? 0 : 0.55)
+      gl.uniform2f(uLook, m.x, m.y)
+      gl.uniform1f(uBlink, b)
+      gl.uniform1f(uMode, look.mode)
+      gl.uniform3f(uBody, body[0], body[1], body[2])
+      gl.uniform3f(uEye, eye[0], eye[1], eye[2])
+      gl.uniform3f(uC1, palette[0]![0], palette[0]![1], palette[0]![2])
+      gl.uniform3f(uC2, palette[1]![0], palette[1]![1], palette[1]![2])
+      gl.uniform3f(uC3, palette[2]![0], palette[2]![1], palette[2]![2])
 
-      gl.drawArrays(gl.TRIANGLES, 0, 6);
-      if (v === "webgl" || on || doBlink) raf = requestAnimationFrame(tick);
-    };
+      gl.drawArrays(gl.TRIANGLES, 0, 6)
+      if (v === "webgl" || on || doBlink) raf = requestAnimationFrame(tick)
+    }
 
-    raf = requestAnimationFrame(tick);
+    raf = requestAnimationFrame(tick)
 
     return () => {
-      running = false;
-      cancelAnimationFrame(raf);
-      ro.disconnect();
-      setHasGl(false);
-      gl.deleteProgram(program);
-      gl.deleteShader(vs);
-      gl.deleteShader(fs);
-      gl.deleteBuffer(buf);
-    };
-  }, []);
+      running = false
+      cancelAnimationFrame(raf)
+      ro.disconnect()
+      setHasGl(false)
+      gl.deleteProgram(program)
+      gl.deleteShader(vs)
+      gl.deleteShader(fs)
+      gl.deleteBuffer(buf)
+    }
+  }, [])
 
   const highlight =
     resolved.mode === 1
       ? mixHex(resolved.palette[1] ?? WEBGL_COLORS[1]!, "#FFFFFF", 0.35)
-      : mixHex(resolved.body, "#FFFFFF", 0.42);
+      : mixHex(resolved.body, "#FFFFFF", 0.42)
   const shade =
     resolved.mode === 1
       ? mixHex(resolved.palette[0] ?? WEBGL_COLORS[0]!, "#0A0A0B", 0.45)
-      : mixHex(resolved.body, "#09090B", 0.22);
+      : mixHex(resolved.body, "#09090B", 0.22)
 
   return (
     <div
@@ -541,13 +538,8 @@ export function LiveOrb({
       ) : null}
       <canvas
         ref={canvasRef}
-        style={{
-          position: "absolute",
-          inset: 0,
-          width: "100%",
-          height: "100%",
-        }}
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
       />
     </div>
-  );
+  )
 }
