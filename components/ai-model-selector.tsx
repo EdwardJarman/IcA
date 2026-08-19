@@ -88,7 +88,7 @@ export function AiModelSelector({
             style={{ color: colors.textFaint, fontSize: 11.5, marginTop: 2 }}
           >
             {selected
-              ? `${selected.provider} · Free${selected.supportsVision ? " · Vision" : ""}`
+              ? `${selected.provider} · ${selected.usageLabel}${selected.supportsVision ? " · Vision" : ""}`
               : catalog.isError
                 ? "Live model list is temporarily unavailable"
                 : "OpenRouter · Free"}
@@ -163,7 +163,8 @@ export function AiModelSelector({
                         marginTop: 2,
                       }}
                     >
-                      {model.provider} · {formatContext(model.contextLength)} context
+                      {model.provider} · {model.usageLabel}
+                      {model.contextLength ? ` · ${formatContext(model.contextLength)} context` : ""}
                       {model.supportsVision ? " · Vision" : ""}
                     </Text>
                   </View>

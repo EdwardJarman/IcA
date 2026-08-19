@@ -3,6 +3,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 
 import { appRouter } from "../routers";
 import { getAiBackendStatus } from "../ai";
+import { handleChatGPTRoute } from "../ai/chatgpt";
 import { createContext } from "./context";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
@@ -37,6 +38,10 @@ export function createApp() {
       return;
     }
     next();
+  });
+
+  app.all("/api/chatgpt/*", (req, res) => {
+    void handleChatGPTRoute(req, res);
   });
 
   app.use(express.json({ limit: "50mb" }));

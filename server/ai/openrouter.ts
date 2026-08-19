@@ -24,7 +24,8 @@ export type RookAiModel = {
   supportsTools: boolean;
   supportsVision: boolean;
   automatic: boolean;
-  free: true;
+  free: boolean;
+  usageLabel: string;
 };
 
 export type RookAiStatus = {
@@ -124,6 +125,7 @@ export function normalizeFreeOpenRouterModels(
         model.architecture?.input_modalities?.includes("image") ?? false,
       automatic: model.id === OPENROUTER_AUTO_MODEL,
       free: true as const,
+      usageLabel: "Free · Shared Rook allowance",
     }));
 
   return normalized.sort((left, right) => {
@@ -189,6 +191,7 @@ export async function listOpenRouterModels(options?: {
       supportsVision: true,
       automatic: true,
       free: true,
+      usageLabel: "Free · Shared Rook allowance",
     });
   }
   catalogCache = { value: models, expiresAt: Date.now() + CATALOG_TTL_MS };

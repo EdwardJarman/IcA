@@ -4,6 +4,7 @@ import { normalizeWorkroomSnapshot } from "../shared/workroom-snapshot";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { systemRouter } from "./_core/systemRouter";
 import { getAiBackendStatus, listAiModels } from "./ai";
+import { deleteChatGPTSession } from "./ai/chatgpt";
 import * as db from "./db";
 import { runRookAgent } from "./integrations/excel-agent";
 import { executeValidatedExcelWrite, type ExcelToolName } from "./integrations/excel-tools";
@@ -37,7 +38,7 @@ export const appRouter = router({
         body: z.string().max(2000),
       })).max(8),
     })).mutation(async ({ ctx, input }) => {
-      const result = await runRookAgent({ userId: ctx.user.id, ...input });
+      const result = await runRookAgent({ userId: ctx.user.id, request: ctx.req, ...input });
       const preferences = await db.getNotificationPreferences(ctx.user.id);
       const needsApproval = result.approvals.length > 0;
       const notificationEnabled = needsApproval
@@ -66,9 +67,9 @@ export const appRouter = router({
   }),
   ai: router({
     status: protectedProcedure.query(() => getAiBackendStatus()),
-    models: protectedProcedure.query(async () => ({
-      provider: "openrouter" as const,
-      models: await listAiModels(),
+    models: protectedProcedure.query(async ({ ctx }) => ({
+      provider: "multi" as const,
+      models: await listAiModels(ctx.req),
     })),
   }),
   excel: router({
@@ -189,7 +190,10 @@ export const appRouter = router({
     export: protectedProcedure.query(({ ctx }) => db.exportAccountWorkroomData(ctx.user.id)),
     delete: protectedProcedure
       .input(z.object({ confirmation: z.literal("DELETE") }))
-      .mutation(({ ctx }) => db.deleteAccountWorkroomData(ctx.user.id)),
+      .mutation(async ({ ctx }) => {
+        await deleteChatGPTSession(ctx.req);
+        return db.deleteAccountWorkroomData(ctx.user.id);
+      }),
   }),
 });
 

@@ -1,4 +1,5 @@
 import type { Message } from "../_core/llm";
+import type { Request } from "express";
 import { invokeAi } from "../ai";
 import * as db from "../db";
 import {
@@ -27,6 +28,7 @@ export type ExcelAgentApproval = {
 
 export async function runRookAgent(input: {
   userId: number;
+  request?: Request;
   botId: string;
   taskId: string;
   botName: string;
@@ -67,7 +69,10 @@ export async function runRookAgent(input: {
   let resolvedModel = requestedModel;
 
   for (let round = 0; round < 6; round += 1) {
-    const response = await invokeAi({ model: requestedModel, messages, tools, toolChoice: tools ? "auto" : undefined, maxTokens: 900 });
+    const response = await invokeAi(
+      { model: requestedModel, messages, tools, toolChoice: tools ? "auto" : undefined, maxTokens: 900 },
+      input.request,
+    );
     resolvedModel = response.model || resolvedModel;
     const answer = response.choices[0]?.message;
     if (!answer) throw new Error("The model did not return a response");

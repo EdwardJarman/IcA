@@ -5,6 +5,7 @@ import { type ComponentProps, type ReactNode, useState } from "react";
 import { Alert, Platform, Pressable, ScrollView, Text, View } from "react-native";
 
 import { AiBackendCard } from "@/components/ai-backend-card";
+import { ChatGPTConnectionCard } from "@/components/chatgpt-connection-card";
 import { ExcelConnectionCard } from "@/components/excel-connection-card";
 import { Avatar, Card, ScreenHeader, SectionHeader, StatusPill, Switch } from "@/components/rook-primitives";
 import { ScreenContainer } from "@/components/screen-container";
@@ -30,7 +31,8 @@ export default function AccountScreen() {
         <ScreenHeader title="Account" lead="Your space, on your terms." />
         <AppearanceCard />
         <View style={{ gap: 12 }}>
-          <SectionHeader title="AI backend" caption="Live free models, selected separately for every Bot." />
+          <SectionHeader title="AI backend" caption="Connect your own plan or use Rook’s shared free models." />
+          <ChatGPTConnectionCard />
           <AiBackendCard />
         </View>
         <View style={{ gap: 12 }}>
