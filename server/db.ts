@@ -8,6 +8,7 @@ import type {
   InsertPushDevice,
   InsertUser,
   MicrosoftConnection,
+  PushDevice,
   User,
 } from "../shared/database";
 import type { WorkroomCloudSnapshot } from "../shared/workroom-snapshot";
@@ -176,7 +177,7 @@ export async function getPushDevice(installationId: string) {
   return pushDevices[0] ? withTimestamps(pushDevices[0]) : undefined;
 }
 
-export async function getPushDevicesForUser(userId: string) {
+export async function getPushDevicesForUser(userId: string): Promise<PushDevice[]> {
   const database = await getDb();
   if (!database) return [];
   const { pushDevices } = await database.query({
