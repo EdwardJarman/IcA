@@ -1,7 +1,7 @@
 export type WorkroomCloudSnapshot = {
   selectedBotId: string;
   onboardingComplete: boolean;
-  aiProvider: "openrouter" | "chatgpt" | "orcarouter";
+  aiProvider: "openrouter" | "chatgpt" | "orcarouter" | "tokenrouter";
   bots: unknown[];
   messages: unknown[];
   tasks: unknown[];
@@ -22,5 +22,8 @@ export const normalizeWorkroomSnapshot = (value: unknown): WorkroomCloudSnapshot
   const preferred = typeof source.selectedBotId === "string" ? source.selectedBotId : "";
   const hasPreferred = bots.some((bot) => Boolean(bot) && typeof bot === "object" && (bot as { id?: unknown }).id === preferred);
   const firstId = bots[0] && typeof bots[0] === "object" ? (bots[0] as { id?: unknown }).id : "";
-  return { selectedBotId: hasPreferred ? preferred : typeof firstId === "string" ? firstId : "", onboardingComplete: Boolean(source.onboardingComplete), aiProvider: source.aiProvider === "chatgpt" ? "chatgpt" : source.aiProvider === "orcarouter" ? "orcarouter" : "openrouter", bots, messages: array("messages"), tasks: array("tasks"), skills: array("skills"), routines: array("routines"), approvals: array("approvals"), files: array("files"), notifications: array("notifications"), activity: array("activity") };
+  const aiProvider = source.aiProvider === "chatgpt" || source.aiProvider === "orcarouter" || source.aiProvider === "tokenrouter"
+    ? source.aiProvider
+    : "openrouter";
+  return { selectedBotId: hasPreferred ? preferred : typeof firstId === "string" ? firstId : "", onboardingComplete: Boolean(source.onboardingComplete), aiProvider, bots, messages: array("messages"), tasks: array("tasks"), skills: array("skills"), routines: array("routines"), approvals: array("approvals"), files: array("files"), notifications: array("notifications"), activity: array("activity") };
 };

@@ -75,7 +75,7 @@ function requireMicrosoftConfig() {
 const base64Url = (value: Buffer) => value.toString("base64url");
 
 export async function createMicrosoftAuthorizationUrl(
-  userId: number,
+  userId: string,
   returnTo?: string,
 ) {
   const config = requireMicrosoftConfig();
@@ -240,7 +240,7 @@ export async function finishMicrosoftAuthorization(
   };
 }
 
-async function accessTokenForUser(userId: number) {
+async function accessTokenForUser(userId: string) {
   const connection = await db.getMicrosoftConnection(userId);
   if (!connection) throw new Error("Microsoft Excel is not connected");
   if (connection.status === "reauthorize")
@@ -272,7 +272,7 @@ async function accessTokenForUser(userId: number) {
   }
 }
 
-async function graph<T>(userId: number, path: string, init?: RequestInit) {
+async function graph<T>(userId: string, path: string, init?: RequestInit) {
   return rawGraph<T>(await accessTokenForUser(userId), path, init);
 }
 
@@ -320,7 +320,7 @@ function worksheetSegment(name: string) {
   return encodeURIComponent(clean);
 }
 
-export async function microsoftConnectionStatus(userId: number) {
+export async function microsoftConnectionStatus(userId: string) {
   const connection = await db.getMicrosoftConnection(userId);
   return {
     configured: isMicrosoftExcelConfigured(),
@@ -334,7 +334,7 @@ export async function microsoftConnectionStatus(userId: number) {
 }
 
 export async function listExcelWorkbooks(
-  userId: number,
+  userId: string,
 ): Promise<ExcelWorkbook[]> {
   type DriveItem = {
     id: string;
@@ -412,7 +412,7 @@ export async function listExcelWorkbooks(
 }
 
 export async function listExcelWorksheets(
-  userId: number,
+  userId: string,
   driveId: string,
   itemId: string,
 ): Promise<ExcelWorksheet[]> {
@@ -424,7 +424,7 @@ export async function listExcelWorksheets(
 }
 
 export async function listExcelTables(
-  userId: number,
+  userId: string,
   driveId: string,
   itemId: string,
 ): Promise<ExcelTable[]> {
@@ -442,7 +442,7 @@ export async function listExcelTables(
 }
 
 export async function readExcelRange(
-  userId: number,
+  userId: string,
   input: {
     driveId: string;
     itemId: string;
@@ -465,7 +465,7 @@ export async function readExcelRange(
 }
 
 export async function updateExcelRange(
-  userId: number,
+  userId: string,
   input: {
     driveId: string;
     itemId: string;
@@ -501,7 +501,7 @@ export async function updateExcelRange(
 }
 
 export async function appendExcelTableRows(
-  userId: number,
+  userId: string,
   input: {
     driveId: string;
     itemId: string;
@@ -521,7 +521,7 @@ export async function appendExcelTableRows(
 }
 
 export async function addExcelWorksheet(
-  userId: number,
+  userId: string,
   input: {
     driveId: string;
     itemId: string;
@@ -541,7 +541,7 @@ export async function addExcelWorksheet(
 }
 
 export async function createExcelWorkbook(
-  userId: number,
+  userId: string,
   input: { name: string; worksheet?: string },
 ) {
   const filename = `${input.name.trim().replace(/\.xlsx$/i, "") || "Rook workbook"}.xlsx`;
@@ -592,7 +592,7 @@ export type ExcelWriteToolName =
   | "excel_create_workbook";
 
 export async function executeExcelWrite(
-  userId: number,
+  userId: string,
   toolName: ExcelWriteToolName,
   args: Record<string, unknown>,
 ) {

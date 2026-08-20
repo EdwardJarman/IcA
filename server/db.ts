@@ -1,252 +1,248 @@
-import { drizzle } from "drizzle-orm/mysql2";
-import { and, eq, sql } from "drizzle-orm";
-import {
+import { id, init } from "@instantdb/admin";
+
+import schema from "../instant.schema";
+import type {
+  ExcelPendingAction,
+  InsertExcelPendingAction,
+  InsertMicrosoftConnection,
   InsertPushDevice,
   InsertUser,
-  excelPendingActions,
-  microsoftConnections,
-  microsoftOAuthStates,
-  pushDevices,
-  userNotificationPreferences,
-  users,
-  workroomBots,
-  workroomFiles,
-  workroomSnapshots,
-  workroomTasks,
-} from "../drizzle/schema";
+  MicrosoftConnection,
+  User,
+} from "../shared/database";
 import type { WorkroomCloudSnapshot } from "../shared/workroom-snapshot";
 import { ENV } from "./_core/env";
 
-let _db: ReturnType<typeof drizzle> | null = null;
-let integrationTablesPromise: Promise<void> | null = null;
+const ROOK_INSTANT_APP_ID = "ed69763d-c8a4-4a28-8bed-c13806f2493d";
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
-export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
-    try {
-      _db = drizzle(process.env.DATABASE_URL);
-    } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
-      _db = null;
+function createInstantDb() {
+  return init({
+    appId: ENV.instantAppId || ROOK_INSTANT_APP_ID,
+    adminToken: ENV.instantAppAdminToken,
+    schema,
+    useDateObjects: true,
+  });
+}
+
+type InstantDb = ReturnType<typeof createInstantDb>;
+type ArrayElement<T> = T extends ReadonlyArray<infer Item> ? Item : T;
+type InstantTx = ArrayElement<Parameters<InstantDb["transact"]>[0]>;
+const INSTANT_TX_BATCH_SIZE = 75;
+
+let _db: InstantDb | null = null;
+let warnedMissingCredentials = false;
+
+/**
+ * Lazily initialize the server-only InstantDB Admin client. The admin token is
+ * never available to the Expo bundle and must be supplied by the deployment.
+ */
+export async function getDb(): Promise<InstantDb | null> {
+  if (_db) return _db;
+  if (!ENV.instantAppAdminToken) {
+    if (!warnedMissingCredentials) {
+      console.warn(
+        "[InstantDB] INSTANT_APP_ADMIN_TOKEN is not configured; persistence is unavailable",
+      );
+      warnedMissingCredentials = true;
     }
+    return null;
   }
+
+  _db = createInstantDb();
   return _db;
 }
 
-async function getIntegrationDb() {
+async function requireDb(): Promise<InstantDb> {
   const database = await getDb();
-  if (!database) return null;
-  if (!integrationTablesPromise) {
-    integrationTablesPromise = (async () => {
-      await database.execute(sql.raw(`CREATE TABLE IF NOT EXISTS microsoftConnections (
-        id int AUTO_INCREMENT PRIMARY KEY,
-        userId int NOT NULL UNIQUE,
-        microsoftUserId varchar(255) NOT NULL,
-        displayName varchar(255),
-        email varchar(320),
-        encryptedAccessToken text NOT NULL,
-        encryptedRefreshToken text NOT NULL,
-        expiresAt timestamp NOT NULL,
-        scopes text NOT NULL,
-        status enum('connected','reauthorize') NOT NULL DEFAULT 'connected',
-        createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updatedAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      )`));
-      await database.execute(sql.raw(`CREATE TABLE IF NOT EXISTS microsoftOAuthStates (
-        state varchar(96) PRIMARY KEY,
-        userId int NOT NULL,
-        codeVerifier varchar(160) NOT NULL,
-        returnTo varchar(500) NOT NULL,
-        expiresAt timestamp NOT NULL,
-        createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        INDEX microsoftOAuthStates_user_idx (userId)
-      )`));
-      await database.execute(sql.raw(`CREATE TABLE IF NOT EXISTS excelPendingActions (
-        id varchar(96) PRIMARY KEY,
-        userId int NOT NULL,
-        botClientId varchar(128) NOT NULL,
-        taskClientId varchar(128) NOT NULL,
-        toolName varchar(64) NOT NULL,
-        arguments json NOT NULL,
-        summary text NOT NULL,
-        state enum('pending','executed','declined','expired') NOT NULL DEFAULT 'pending',
-        result json,
-        expiresAt timestamp NOT NULL,
-        createdAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updatedAt timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        INDEX excelPendingActions_user_idx (userId),
-        INDEX excelPendingActions_task_idx (taskClientId)
-      )`));
-    })().catch((error) => {
-      integrationTablesPromise = null;
-      throw error;
-    });
-  }
-  await integrationTablesPromise;
+  if (!database) throw new Error("Database is unavailable");
   return database;
 }
 
-export async function upsertUser(user: InsertUser): Promise<void> {
-  if (!user.openId) {
-    throw new Error("User openId is required for upsert");
+async function transactInBatches(database: InstantDb, chunks: InstantTx[]) {
+  for (let index = 0; index < chunks.length; index += INSTANT_TX_BATCH_SIZE) {
+    await database.transact(chunks.slice(index, index + INSTANT_TX_BATCH_SIZE));
   }
+}
 
-  const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot upsert user: database not available");
+const nullable = <T>(value: T | null | undefined): T | null => value ?? null;
+const asDate = (value: Date | string | number): Date =>
+  value instanceof Date ? value : new Date(value);
+const withTimestamps = <T extends { createdAt: Date; updatedAt: Date }>(
+  entity: T,
+): T => ({
+  ...entity,
+  createdAt: asDate(entity.createdAt),
+  updatedAt: asDate(entity.updatedAt),
+});
+
+function asUser(entity: {
+  id: string;
+  openId: string;
+  name?: string;
+  email?: string;
+  loginMethod?: string;
+  role: string;
+  createdAt: Date;
+  updatedAt: Date;
+  lastSignedIn: Date;
+}): User {
+  return {
+    id: entity.id,
+    openId: entity.openId,
+    name: nullable(entity.name),
+    email: nullable(entity.email),
+    loginMethod: nullable(entity.loginMethod),
+    role: entity.role === "admin" ? "admin" : "user",
+    createdAt: asDate(entity.createdAt),
+    updatedAt: asDate(entity.updatedAt),
+    lastSignedIn: asDate(entity.lastSignedIn),
+  };
+}
+
+export async function upsertUser(user: InsertUser): Promise<void> {
+  if (!user.openId) throw new Error("User openId is required for upsert");
+
+  const database = await getDb();
+  if (!database) {
+    console.warn("[InstantDB] Cannot upsert user: database not available");
     return;
   }
 
   try {
-    const values: InsertUser = {
-      openId: user.openId,
-    };
-    const updateSet: Record<string, unknown> = {};
+    const existing = await getUserByOpenId(user.openId);
+    const now = new Date();
+    const role =
+      user.role ??
+      existing?.role ??
+      (user.openId === ENV.ownerOpenId ? "admin" : "user");
 
-    const textFields = ["name", "email", "loginMethod"] as const;
-    type TextField = (typeof textFields)[number];
-
-    const assignNullable = (field: TextField) => {
-      const value = user[field];
-      if (value === undefined) return;
-      const normalized = value ?? null;
-      values[field] = normalized;
-      updateSet[field] = normalized;
-    };
-
-    textFields.forEach(assignNullable);
-
-    if (user.lastSignedIn !== undefined) {
-      values.lastSignedIn = user.lastSignedIn;
-      updateSet.lastSignedIn = user.lastSignedIn;
-    }
-    if (user.role !== undefined) {
-      values.role = user.role;
-      updateSet.role = user.role;
-    } else if (user.openId === ENV.ownerOpenId) {
-      values.role = "admin";
-      updateSet.role = "admin";
-    }
-
-    if (!values.lastSignedIn) {
-      values.lastSignedIn = new Date();
-    }
-
-    if (Object.keys(updateSet).length === 0) {
-      updateSet.lastSignedIn = new Date();
-    }
-
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
-      set: updateSet,
-    });
+    await database.transact(
+      database.tx.users.lookup("openId", user.openId).update({
+        role,
+        createdAt: user.createdAt ?? existing?.createdAt ?? now,
+        updatedAt: user.updatedAt ?? now,
+        lastSignedIn: user.lastSignedIn ?? existing?.lastSignedIn ?? now,
+        ...(user.name !== undefined ? { name: user.name ?? undefined } : {}),
+        ...(user.email !== undefined ? { email: user.email ?? undefined } : {}),
+        ...(user.loginMethod !== undefined
+          ? { loginMethod: user.loginMethod ?? undefined }
+          : {}),
+      }),
+    );
   } catch (error) {
-    console.error("[Database] Failed to upsert user:", error);
+    console.error("[InstantDB] Failed to upsert user:", error);
     throw error;
   }
 }
 
-export async function getUserByOpenId(openId: string) {
-  const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot get user: database not available");
-    return undefined;
-  }
-
-  const result = await db
-    .select()
-    .from(users)
-    .where(eq(users.openId, openId))
-    .limit(1);
-
-  return result.length > 0 ? result[0] : undefined;
+export async function getUserByOpenId(openId: string): Promise<User | undefined> {
+  const database = await getDb();
+  if (!database) return undefined;
+  const { users } = await database.query({
+    users: { $: { where: { openId }, limit: 1 } },
+  });
+  return users[0] ? asUser(users[0]) : undefined;
 }
 
 export async function upsertPushDevice(
-  userId: number,
-  device: Pick<
-    InsertPushDevice,
-    "installationId" | "expoPushToken" | "approvalEnabled" | "completionEnabled"
-  >,
+  userId: string,
+  device: InsertPushDevice,
 ) {
-  const db = await getDb();
-  if (!db) return false;
-  await db
-    .insert(pushDevices)
-    .values({ ...device, userId })
-    .onDuplicateKeyUpdate({
-      set: {
+  const database = await getDb();
+  if (!database) return false;
+  const existing = await getPushDevice(device.installationId);
+  const now = new Date();
+  await database.transact(
+    database.tx.pushDevices
+      .lookup("installationId", device.installationId)
+      .update({
         userId,
         expoPushToken: device.expoPushToken,
         approvalEnabled: device.approvalEnabled,
         completionEnabled: device.completionEnabled,
-        updatedAt: new Date(),
-      },
-    });
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+      }),
+  );
   return true;
 }
 
 export async function getPushDevice(installationId: string) {
-  const db = await getDb();
-  if (!db) return undefined;
-  const result = await db
-    .select()
-    .from(pushDevices)
-    .where(eq(pushDevices.installationId, installationId))
-    .limit(1);
-  return result[0];
+  const database = await getDb();
+  if (!database) return undefined;
+  const { pushDevices } = await database.query({
+    pushDevices: { $: { where: { installationId }, limit: 1 } },
+  });
+  return pushDevices[0] ? withTimestamps(pushDevices[0]) : undefined;
 }
 
-export async function getPushDevicesForUser(userId: number) {
-  const db = await getDb();
-  if (!db) return [];
-  return db.select().from(pushDevices).where(eq(pushDevices.userId, userId));
+export async function getPushDevicesForUser(userId: string) {
+  const database = await getDb();
+  if (!database) return [];
+  const { pushDevices } = await database.query({
+    pushDevices: { $: { where: { userId } } },
+  });
+  return pushDevices.map(withTimestamps);
 }
 
-export async function getNotificationPreferences(userId: number) {
-  const db = await getDb();
-  if (!db) return undefined;
-  const result = await db
-    .select()
-    .from(userNotificationPreferences)
-    .where(eq(userNotificationPreferences.userId, userId))
-    .limit(1);
-  return result[0];
+export async function getNotificationPreferences(userId: string) {
+  const database = await getDb();
+  if (!database) return undefined;
+  const { userNotificationPreferences } = await database.query({
+    userNotificationPreferences: {
+      $: { where: { userId }, limit: 1 },
+    },
+  });
+  return userNotificationPreferences[0]
+    ? withTimestamps(userNotificationPreferences[0])
+    : undefined;
 }
 
 export async function upsertNotificationPreferences(
-  userId: number,
+  userId: string,
   preferences: { approvalEnabled: boolean; completionEnabled: boolean },
 ) {
-  const db = await getDb();
-  if (!db) return false;
-  await db
-    .insert(userNotificationPreferences)
-    .values({ userId, ...preferences })
-    .onDuplicateKeyUpdate({ set: { ...preferences, updatedAt: new Date() } });
+  const database = await getDb();
+  if (!database) return false;
+  const existing = await getNotificationPreferences(userId);
+  const now = new Date();
+  await database.transact(
+    database.tx.userNotificationPreferences.lookup("userId", userId).update({
+      ...preferences,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+    }),
+  );
   return true;
 }
 
-export async function getWorkroomSnapshot(userId: number) {
-  const db = await getDb();
-  if (!db) return undefined;
-  const result = await db
-    .select()
-    .from(workroomSnapshots)
-    .where(eq(workroomSnapshots.userId, userId))
-    .limit(1);
-  return result[0];
+export async function getWorkroomSnapshot(userId: string) {
+  const database = await getDb();
+  if (!database) return undefined;
+  const { workroomSnapshots } = await database.query({
+    workroomSnapshots: { $: { where: { userId }, limit: 1 } },
+  });
+  return workroomSnapshots[0]
+    ? withTimestamps(workroomSnapshots[0])
+    : undefined;
 }
 
 export async function upsertWorkroomSnapshot(
-  userId: number,
+  userId: string,
   snapshot: WorkroomCloudSnapshot,
 ) {
-  const db = await getDb();
-  if (!db) return false;
-  await db
-    .insert(workroomSnapshots)
-    .values({ userId, snapshot })
-    .onDuplicateKeyUpdate({ set: { snapshot, updatedAt: new Date() } });
+  const database = await getDb();
+  if (!database) return false;
+  const existing = await getWorkroomSnapshot(userId);
+  const now = new Date();
+  await database.transact(
+    database.tx.workroomSnapshots.lookup("userId", userId).update({
+      syncVersion: existing?.syncVersion ?? id(),
+      snapshot,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+    }),
+  );
   return true;
 }
 
@@ -257,16 +253,15 @@ const textValue = (
   key: string,
   fallback = "",
 ) => (typeof source[key] === "string" ? source[key] : fallback);
+const recordKey = (userId: string, syncVersion: string, clientId: string) =>
+  `${userId}:${syncVersion}:${clientId}`;
 
-export async function syncNormalizedWorkroomRecords(
-  userId: number,
+export async function saveWorkroomState(
+  userId: string,
   snapshot: WorkroomCloudSnapshot,
 ) {
-  const db = await getDb();
-  if (!db) return false;
-  await db.delete(workroomBots).where(eq(workroomBots.userId, userId));
-  await db.delete(workroomTasks).where(eq(workroomTasks.userId, userId));
-  await db.delete(workroomFiles).where(eq(workroomFiles.userId, userId));
+  const database = await requireDb();
+  const existingSnapshot = await getWorkroomSnapshot(userId);
   const bots = snapshot.bots
     .map(record)
     .filter((item) => textValue(item, "id") && textValue(item, "name"));
@@ -276,126 +271,218 @@ export async function syncNormalizedWorkroomRecords(
   const files = snapshot.files
     .map(record)
     .filter((item) => textValue(item, "id") && textValue(item, "name"));
-  if (bots.length)
-    await db
-      .insert(workroomBots)
-      .values(
-        bots.map((bot) => ({
-          userId,
-          clientId: textValue(bot, "id"),
-          name: textValue(bot, "name"),
-          role: textValue(bot, "role"),
-          status: textValue(bot, "status", "Ready"),
-          color: textValue(bot, "color", "#7563F5"),
-          icon: textValue(bot, "icon", "auto-awesome"),
-          payload: bot,
-        })),
-      );
-  if (tasks.length)
-    await db
-      .insert(workroomTasks)
-      .values(
-        tasks.map((task) => ({
-          userId,
-          clientId: textValue(task, "id"),
-          botClientId: textValue(task, "botId"),
-          title: textValue(task, "title"),
-          status: textValue(task, "status", "Draft"),
-          risk: textValue(task, "risk", "Low"),
-          payload: task,
-        })),
-      );
-  if (files.length)
-    await db
-      .insert(workroomFiles)
-      .values(
-        files.map((file) => ({
-          userId,
-          clientId: textValue(file, "id"),
-          name: textValue(file, "name"),
-          owner: textValue(file, "owner"),
-          scope: textValue(file, "scope", "Bot-private"),
-          payload: file,
-        })),
-      );
+  const now = new Date();
+  const syncVersion = id();
+  const recordTransactions: InstantTx[] = [
+    ...bots.map((bot) => {
+      const clientId = textValue(bot, "id");
+      return database.tx.workroomBots[id()].create({
+        recordKey: recordKey(userId, syncVersion, clientId),
+        userId,
+        syncVersion,
+        clientId,
+        name: textValue(bot, "name"),
+        role: textValue(bot, "role"),
+        status: textValue(bot, "status", "Ready"),
+        color: textValue(bot, "color", "#7563F5"),
+        icon: textValue(bot, "icon", "auto-awesome"),
+        payload: bot,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }),
+    ...tasks.map((task) => {
+      const clientId = textValue(task, "id");
+      return database.tx.workroomTasks[id()].create({
+        recordKey: recordKey(userId, syncVersion, clientId),
+        userId,
+        syncVersion,
+        clientId,
+        botClientId: textValue(task, "botId"),
+        title: textValue(task, "title"),
+        status: textValue(task, "status", "Draft"),
+        risk: textValue(task, "risk", "Low"),
+        payload: task,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }),
+    ...files.map((file) => {
+      const clientId = textValue(file, "id");
+      return database.tx.workroomFiles[id()].create({
+        recordKey: recordKey(userId, syncVersion, clientId),
+        userId,
+        syncVersion,
+        clientId,
+        name: textValue(file, "name"),
+        owner: textValue(file, "owner"),
+        scope: textValue(file, "scope", "Bot-private"),
+        payload: file,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }),
+  ];
+  await transactInBatches(database, recordTransactions);
+  await database.transact(
+    database.tx.workroomSnapshots.lookup("userId", userId).update({
+      syncVersion,
+      snapshot,
+      createdAt: existingSnapshot?.createdAt ?? now,
+      updatedAt: now,
+    }),
+  );
+
+  const previousVersion = existingSnapshot?.syncVersion;
+  if (previousVersion && previousVersion !== syncVersion) {
+    const stale = await database.query({
+      workroomBots: { $: { where: { userId, syncVersion: previousVersion } } },
+      workroomTasks: { $: { where: { userId, syncVersion: previousVersion } } },
+      workroomFiles: { $: { where: { userId, syncVersion: previousVersion } } },
+    });
+    const staleTransactions: InstantTx[] = [
+      ...stale.workroomBots.map((item) =>
+        database.tx.workroomBots[item.id].delete(),
+      ),
+      ...stale.workroomTasks.map((item) =>
+        database.tx.workroomTasks[item.id].delete(),
+      ),
+      ...stale.workroomFiles.map((item) =>
+        database.tx.workroomFiles[item.id].delete(),
+      ),
+    ];
+    await transactInBatches(database, staleTransactions);
+  }
   return true;
 }
 
-export async function listNormalizedWorkroomRecords(userId: number) {
-  const db = await getDb();
-  if (!db) return { bots: [], tasks: [], files: [] };
-  const [bots, tasks, files] = await Promise.all([
-    db.select().from(workroomBots).where(eq(workroomBots.userId, userId)),
-    db.select().from(workroomTasks).where(eq(workroomTasks.userId, userId)),
-    db.select().from(workroomFiles).where(eq(workroomFiles.userId, userId)),
-  ]);
-  return { bots, tasks, files };
+export async function syncNormalizedWorkroomRecords(
+  userId: string,
+  snapshot: WorkroomCloudSnapshot,
+) {
+  return saveWorkroomState(userId, snapshot);
+}
+
+export async function listNormalizedWorkroomRecords(userId: string) {
+  const database = await getDb();
+  if (!database) return { bots: [], tasks: [], files: [] };
+  const snapshot = await getWorkroomSnapshot(userId);
+  if (!snapshot?.syncVersion) return { bots: [], tasks: [], files: [] };
+  const syncVersion = snapshot.syncVersion;
+  const { workroomBots, workroomTasks, workroomFiles } = await database.query({
+    workroomBots: { $: { where: { userId, syncVersion } } },
+    workroomTasks: { $: { where: { userId, syncVersion } } },
+    workroomFiles: { $: { where: { userId, syncVersion } } },
+  });
+  return {
+    bots: workroomBots.map(withTimestamps),
+    tasks: workroomTasks.map(withTimestamps),
+    files: workroomFiles.map(withTimestamps),
+  };
 }
 
 export async function createMicrosoftOAuthState(input: {
   state: string;
-  userId: number;
+  userId: string;
   codeVerifier: string;
   returnTo: string;
   expiresAt: Date;
 }) {
-  const db = await getDb();
-  if (!db) throw new Error("Database is unavailable");
-  await db.insert(microsoftOAuthStates).values(input);
+  const database = await requireDb();
+  await database.transact(
+    database.tx.microsoftOAuthStates.lookup("state", input.state).update({
+      userId: input.userId,
+      codeVerifier: input.codeVerifier,
+      returnTo: input.returnTo,
+      expiresAt: input.expiresAt,
+      createdAt: new Date(),
+    }),
+  );
 }
 
 export async function consumeMicrosoftOAuthState(state: string) {
-  const db = await getDb();
-  if (!db) throw new Error("Database is unavailable");
-  const result = await db
-    .select()
-    .from(microsoftOAuthStates)
-    .where(eq(microsoftOAuthStates.state, state))
-    .limit(1);
-  await db
-    .delete(microsoftOAuthStates)
-    .where(eq(microsoftOAuthStates.state, state));
-  const record = result[0];
-  if (!record || record.expiresAt.getTime() <= Date.now()) return undefined;
-  return record;
+  const database = await requireDb();
+  const { microsoftOAuthStates } = await database.query({
+    microsoftOAuthStates: { $: { where: { state }, limit: 1 } },
+  });
+  const oauthState = microsoftOAuthStates[0];
+  if (!oauthState) return undefined;
+  await database.transact(
+    database.tx.microsoftOAuthStates[oauthState.id].delete(),
+  );
+  const normalized = {
+    ...oauthState,
+    expiresAt: asDate(oauthState.expiresAt),
+    createdAt: asDate(oauthState.createdAt),
+  };
+  if (normalized.expiresAt.getTime() <= Date.now()) return undefined;
+  return normalized;
 }
 
-export async function getMicrosoftConnection(userId: number) {
-  const db = await getDb();
-  if (!db) return undefined;
-  const result = await db
-    .select()
-    .from(microsoftConnections)
-    .where(eq(microsoftConnections.userId, userId))
-    .limit(1);
-  return result[0];
+function asMicrosoftConnection(entity: {
+  id: string;
+  userId: string;
+  microsoftUserId: string;
+  displayName?: string;
+  email?: string;
+  encryptedAccessToken: string;
+  encryptedRefreshToken: string;
+  expiresAt: Date;
+  scopes: string;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
+}): MicrosoftConnection {
+  return {
+    ...entity,
+    displayName: nullable(entity.displayName),
+    email: nullable(entity.email),
+    status: entity.status === "reauthorize" ? "reauthorize" : "connected",
+    expiresAt: asDate(entity.expiresAt),
+    createdAt: asDate(entity.createdAt),
+    updatedAt: asDate(entity.updatedAt),
+  };
+}
+
+export async function getMicrosoftConnection(
+  userId: string,
+): Promise<MicrosoftConnection | undefined> {
+  const database = await getDb();
+  if (!database) return undefined;
+  const { microsoftConnections } = await database.query({
+    microsoftConnections: { $: { where: { userId }, limit: 1 } },
+  });
+  return microsoftConnections[0]
+    ? asMicrosoftConnection(microsoftConnections[0])
+    : undefined;
 }
 
 export async function upsertMicrosoftConnection(
-  input: typeof microsoftConnections.$inferInsert,
+  input: InsertMicrosoftConnection,
 ) {
-  const db = await getDb();
-  if (!db) throw new Error("Database is unavailable");
-  await db
-    .insert(microsoftConnections)
-    .values(input)
-    .onDuplicateKeyUpdate({
-      set: {
-        microsoftUserId: input.microsoftUserId,
-        displayName: input.displayName,
-        email: input.email,
-        encryptedAccessToken: input.encryptedAccessToken,
-        encryptedRefreshToken: input.encryptedRefreshToken,
-        expiresAt: input.expiresAt,
-        scopes: input.scopes,
-        status: input.status ?? "connected",
-        updatedAt: new Date(),
-      },
-    });
+  const database = await requireDb();
+  const existing = await getMicrosoftConnection(input.userId);
+  const now = new Date();
+  await database.transact(
+    database.tx.microsoftConnections.lookup("userId", input.userId).update({
+      microsoftUserId: input.microsoftUserId,
+      encryptedAccessToken: input.encryptedAccessToken,
+      encryptedRefreshToken: input.encryptedRefreshToken,
+      expiresAt: input.expiresAt,
+      scopes: input.scopes,
+      status: input.status ?? "connected",
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+      ...(input.displayName !== undefined
+        ? { displayName: input.displayName ?? undefined }
+        : {}),
+      ...(input.email !== undefined ? { email: input.email ?? undefined } : {}),
+    }),
+  );
 }
 
 export async function updateMicrosoftTokens(
-  userId: number,
+  userId: string,
   input: {
     encryptedAccessToken: string;
     encryptedRefreshToken: string;
@@ -403,85 +490,248 @@ export async function updateMicrosoftTokens(
     scopes: string;
   },
 ) {
-  const db = await getDb();
-  if (!db) throw new Error("Database is unavailable");
-  await db
-    .update(microsoftConnections)
-    .set({ ...input, status: "connected", updatedAt: new Date() })
-    .where(eq(microsoftConnections.userId, userId));
+  const database = await requireDb();
+  const connection = await getMicrosoftConnection(userId);
+  if (!connection) throw new Error("Microsoft Excel is not connected");
+  await database.transact(
+    database.tx.microsoftConnections[connection.id].update(
+      {
+        ...input,
+        status: "connected",
+        updatedAt: new Date(),
+      },
+      { upsert: false },
+    ),
+  );
 }
 
-export async function markMicrosoftReauthorizationRequired(userId: number) {
-  const db = await getDb();
-  if (!db) return;
-  await db
-    .update(microsoftConnections)
-    .set({ status: "reauthorize", updatedAt: new Date() })
-    .where(eq(microsoftConnections.userId, userId));
+export async function markMicrosoftReauthorizationRequired(userId: string) {
+  const database = await getDb();
+  if (!database) return;
+  const connection = await getMicrosoftConnection(userId);
+  if (!connection) return;
+  await database.transact(
+    database.tx.microsoftConnections[connection.id].update(
+      { status: "reauthorize", updatedAt: new Date() },
+      { upsert: false },
+    ),
+  );
 }
 
-export async function deleteMicrosoftConnection(userId: number) {
-  const db = await getDb();
-  if (!db) return false;
-  await db
-    .delete(microsoftConnections)
-    .where(eq(microsoftConnections.userId, userId));
-  await db
-    .delete(microsoftOAuthStates)
-    .where(eq(microsoftOAuthStates.userId, userId));
-  await db
-    .delete(excelPendingActions)
-    .where(eq(excelPendingActions.userId, userId));
+function deletionTransactions(
+  database: InstantDb,
+  input: {
+    microsoftConnections?: Array<{ id: string }>;
+    microsoftOAuthStates?: Array<{ id: string }>;
+    excelPendingActions?: Array<{ id: string }>;
+    excelActionClaims?: Array<{ id: string }>;
+    workroomSnapshots?: Array<{ id: string }>;
+    workroomBots?: Array<{ id: string }>;
+    workroomTasks?: Array<{ id: string }>;
+    workroomFiles?: Array<{ id: string }>;
+    userNotificationPreferences?: Array<{ id: string }>;
+    pushDevices?: Array<{ id: string }>;
+  },
+): InstantTx[] {
+  return [
+    ...(input.microsoftConnections ?? []).map((item) =>
+      database.tx.microsoftConnections[item.id].delete(),
+    ),
+    ...(input.microsoftOAuthStates ?? []).map((item) =>
+      database.tx.microsoftOAuthStates[item.id].delete(),
+    ),
+    ...(input.excelPendingActions ?? []).map((item) =>
+      database.tx.excelPendingActions[item.id].delete(),
+    ),
+    ...(input.excelActionClaims ?? []).map((item) =>
+      database.tx.excelActionClaims[item.id].delete(),
+    ),
+    ...(input.workroomSnapshots ?? []).map((item) =>
+      database.tx.workroomSnapshots[item.id].delete(),
+    ),
+    ...(input.workroomBots ?? []).map((item) =>
+      database.tx.workroomBots[item.id].delete(),
+    ),
+    ...(input.workroomTasks ?? []).map((item) =>
+      database.tx.workroomTasks[item.id].delete(),
+    ),
+    ...(input.workroomFiles ?? []).map((item) =>
+      database.tx.workroomFiles[item.id].delete(),
+    ),
+    ...(input.userNotificationPreferences ?? []).map((item) =>
+      database.tx.userNotificationPreferences[item.id].delete(),
+    ),
+    ...(input.pushDevices ?? []).map((item) =>
+      database.tx.pushDevices[item.id].delete(),
+    ),
+  ];
+}
+
+export async function deleteMicrosoftConnection(userId: string) {
+  const database = await getDb();
+  if (!database) return false;
+  const result = await database.query({
+    microsoftConnections: { $: { where: { userId } } },
+    microsoftOAuthStates: { $: { where: { userId } } },
+    excelPendingActions: { $: { where: { userId } } },
+    excelActionClaims: { $: { where: { userId } } },
+  });
+  const transactions = deletionTransactions(database, result);
+  if (transactions.length) await database.transact(transactions);
   return true;
 }
 
 export async function createExcelPendingAction(
-  input: typeof excelPendingActions.$inferInsert,
+  input: InsertExcelPendingAction,
 ) {
-  const db = await getDb();
-  if (!db) throw new Error("Database is unavailable");
-  await db.insert(excelPendingActions).values(input);
+  const database = await requireDb();
+  const now = new Date();
+  await database.transact(
+    database.tx.excelPendingActions.lookup("actionId", input.id).update({
+      userId: input.userId,
+      botClientId: input.botClientId,
+      taskClientId: input.taskClientId,
+      toolName: input.toolName,
+      arguments: input.arguments,
+      summary: input.summary,
+      state: input.state ?? "pending",
+      expiresAt: input.expiresAt,
+      createdAt: now,
+      updatedAt: now,
+      ...(input.result !== undefined ? { result: input.result } : {}),
+    }),
+  );
 }
 
-export async function getExcelPendingAction(userId: number, id: string) {
-  const db = await getDb();
-  if (!db) return undefined;
-  const result = await db
-    .select()
-    .from(excelPendingActions)
-    .where(
-      and(
-        eq(excelPendingActions.userId, userId),
-        eq(excelPendingActions.id, id),
+function asExcelPendingAction(entity: {
+  id: string;
+  actionId: string;
+  userId: string;
+  botClientId: string;
+  taskClientId: string;
+  toolName: string;
+  arguments: Record<string, unknown>;
+  summary: string;
+  state: string;
+  result?: unknown;
+  expiresAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}): ExcelPendingAction {
+  const state = ["executing", "executed", "failed", "declined", "expired"].includes(entity.state)
+    ? (entity.state as ExcelPendingAction["state"])
+    : "pending";
+  return {
+    id: entity.actionId,
+    userId: entity.userId,
+    botClientId: entity.botClientId,
+    taskClientId: entity.taskClientId,
+    toolName: entity.toolName,
+    arguments: entity.arguments,
+    summary: entity.summary,
+    state,
+    result: entity.result,
+    expiresAt: asDate(entity.expiresAt),
+    createdAt: asDate(entity.createdAt),
+    updatedAt: asDate(entity.updatedAt),
+  };
+}
+
+export async function getExcelPendingAction(userId: string, actionId: string) {
+  const database = await getDb();
+  if (!database) return undefined;
+  const { excelPendingActions } = await database.query({
+    excelPendingActions: {
+      $: { where: { actionId }, limit: 1 },
+    },
+  });
+  const action = excelPendingActions[0];
+  if (!action || action.userId !== userId) return undefined;
+  return asExcelPendingAction(action);
+}
+
+export async function listPendingExcelActions(userId: string) {
+  const database = await getDb();
+  if (!database) return [];
+  const { excelPendingActions } = await database.query({
+    excelPendingActions: { $: { where: { userId, state: "pending" } } },
+  });
+  return excelPendingActions.map(asExcelPendingAction);
+}
+
+export async function claimExcelPendingAction(
+  userId: string,
+  actionId: string,
+) {
+  const database = await requireDb();
+  const action = await getExcelPendingAction(userId, actionId);
+  if (!action || action.state !== "pending") return undefined;
+  const { excelPendingActions } = await database.query({
+    excelPendingActions: { $: { where: { actionId }, limit: 1 } },
+  });
+  const stored = excelPendingActions[0];
+  if (!stored || stored.userId !== userId || stored.state !== "pending")
+    return undefined;
+  try {
+    await database.transact([
+      database.tx.excelActionClaims[id()].create({
+        actionId,
+        userId,
+        createdAt: new Date(),
+      }),
+      database.tx.excelPendingActions[stored.id].update(
+        { state: "executing", updatedAt: new Date() },
+        { upsert: false },
       ),
-    )
-    .limit(1);
-  return result[0];
+    ]);
+  } catch {
+    return undefined;
+  }
+  return { ...action, state: "executing" as const };
+}
+
+export async function finishExcelPendingAction(
+  userId: string,
+  actionId: string,
+  input: {
+    state: "executed" | "failed" | "declined" | "expired";
+    result?: unknown;
+  },
+) {
+  const database = await requireDb();
+  const { excelPendingActions } = await database.query({
+    excelPendingActions: { $: { where: { actionId }, limit: 1 } },
+  });
+  const action = excelPendingActions[0];
+  if (!action || action.userId !== userId || action.state !== "executing")
+    return false;
+  await database.transact(
+    database.tx.excelPendingActions[action.id].update(
+      {
+        state: input.state,
+        updatedAt: new Date(),
+        ...(input.result !== undefined ? { result: input.result } : {}),
+      },
+      { upsert: false },
+    ),
+  );
+  return true;
 }
 
 export async function resolveExcelPendingAction(
-  userId: number,
-  id: string,
+  userId: string,
+  actionId: string,
   input: {
     state: "executed" | "declined" | "expired";
     result?: unknown;
   },
 ) {
-  const db = await getDb();
-  if (!db) throw new Error("Database is unavailable");
-  await db
-    .update(excelPendingActions)
-    .set({ ...input, updatedAt: new Date() })
-    .where(
-      and(
-        eq(excelPendingActions.userId, userId),
-        eq(excelPendingActions.id, id),
-        eq(excelPendingActions.state, "pending"),
-      ),
-    );
+  const claimed = await claimExcelPendingAction(userId, actionId);
+  if (!claimed) return;
+  await finishExcelPendingAction(userId, actionId, input);
 }
 
-export async function exportAccountWorkroomData(userId: number) {
+export async function exportAccountWorkroomData(userId: string) {
   const [snapshot, records, preferences, microsoft] = await Promise.all([
     getWorkroomSnapshot(userId),
     listNormalizedWorkroomRecords(userId),
@@ -512,27 +762,22 @@ export async function exportAccountWorkroomData(userId: number) {
   };
 }
 
-export async function deleteAccountWorkroomData(userId: number) {
-  const db = await getDb();
-  if (!db) return false;
-  await db
-    .delete(workroomSnapshots)
-    .where(eq(workroomSnapshots.userId, userId));
-  await db.delete(workroomBots).where(eq(workroomBots.userId, userId));
-  await db.delete(workroomTasks).where(eq(workroomTasks.userId, userId));
-  await db.delete(workroomFiles).where(eq(workroomFiles.userId, userId));
-  await db
-    .delete(userNotificationPreferences)
-    .where(eq(userNotificationPreferences.userId, userId));
-  await db.delete(pushDevices).where(eq(pushDevices.userId, userId));
-  await db
-    .delete(microsoftConnections)
-    .where(eq(microsoftConnections.userId, userId));
-  await db
-    .delete(microsoftOAuthStates)
-    .where(eq(microsoftOAuthStates.userId, userId));
-  await db
-    .delete(excelPendingActions)
-    .where(eq(excelPendingActions.userId, userId));
+export async function deleteAccountWorkroomData(userId: string) {
+  const database = await getDb();
+  if (!database) return false;
+  const result = await database.query({
+    workroomSnapshots: { $: { where: { userId } } },
+    workroomBots: { $: { where: { userId } } },
+    workroomTasks: { $: { where: { userId } } },
+    workroomFiles: { $: { where: { userId } } },
+    userNotificationPreferences: { $: { where: { userId } } },
+    pushDevices: { $: { where: { userId } } },
+    microsoftConnections: { $: { where: { userId } } },
+    microsoftOAuthStates: { $: { where: { userId } } },
+    excelPendingActions: { $: { where: { userId } } },
+    excelActionClaims: { $: { where: { userId } } },
+  });
+  const transactions = deletionTransactions(database, result);
+  await transactInBatches(database, transactions);
   return true;
 }

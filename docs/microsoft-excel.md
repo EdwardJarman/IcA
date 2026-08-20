@@ -51,4 +51,4 @@ Read operations may run directly when requested. Write operations are persisted 
 
 ## Database
 
-The canonical migration is `drizzle/0004_curious_zeigeist.sql`. The server also creates these three integration tables with `CREATE TABLE IF NOT EXISTS` on first use so deployments that do not automatically run Drizzle migrations still start safely.
+The canonical data model is `instant.schema.ts`, and `instant.perms.ts` denies all client access. Microsoft connections, single-use OAuth states, and approval-gated Excel actions are read and written only by the Express backend through `@instantdb/admin`. The deployment must define `INSTANT_APP_ADMIN_TOKEN`; this secret must never be exposed through an `EXPO_PUBLIC_*` variable or committed to source control.

@@ -49,7 +49,7 @@ export function agentClockContext(now = new Date(), requestedTimeZone?: string) 
 }
 
 export async function runRookAgent(input: {
-  userId: number;
+  userId: string;
   request?: Request;
   botId: string;
   taskId: string;
@@ -81,7 +81,7 @@ export async function runRookAgent(input: {
   const messages: Message[] = [
     {
       role: "system",
-      content: `You are ${input.botName}, a ${input.botRole} in Rook. Purpose: ${input.botPurpose}\n\nLive clock at the start of this request: ${clock.local} (${clock.timeZone}). Canonical timestamp: ${clock.iso}. This clock is generated fresh by Rook for every request. Use it for date and time questions and be explicit about the timezone when relevant.\n\nYou are a calm, precise AI teammate. Respond with a concise, useful working note. State assumptions when information is missing. ${connectionNote} Never claim an external action succeeded unless its tool result explicitly confirms success. Never reveal internal IDs, access tokens, or raw tool implementation details.`,
+      content: `You are ${input.botName}, a ${input.botRole} in Rook. Purpose: ${input.botPurpose}\n\nThe user selected this exact Rook model route: ${requestedModel}. This route is user-visible and safe to report. If asked which AI model you are, report that selected route accurately instead of guessing from training data.\n\nLive clock at the start of this request: ${clock.local} (${clock.timeZone}). Canonical timestamp: ${clock.iso}. This clock is generated fresh by Rook for every request. Use it for date and time questions and be explicit about the timezone when relevant.\n\nYou are a calm, precise AI teammate. Respond with a concise, useful working note. State assumptions when information is missing. ${connectionNote} Never claim an external action succeeded unless its tool result explicitly confirms success. Never reveal other internal IDs, access tokens, or raw tool implementation details.`,
     },
     ...input.recentContext.map((entry) => ({
       role: entry.author === "bot" ? "assistant" as const : entry.author === "system" ? "system" as const : "user" as const,

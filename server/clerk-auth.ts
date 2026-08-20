@@ -1,7 +1,7 @@
 import { createClerkClient, verifyToken } from "@clerk/backend";
 import type { Request } from "express";
 
-import type { User } from "../drizzle/schema";
+import type { User } from "../shared/database";
 import * as db from "./db";
 
 export function extractClerkBearerToken(value: string | undefined): string | null {
@@ -19,14 +19,9 @@ export function transientClerkUser(input: {
   name: string | null;
   email: string | null;
 }): User {
-  let hash = 2166136261;
-  for (const character of input.clerkUserId) {
-    hash ^= character.charCodeAt(0);
-    hash = Math.imul(hash, 16777619);
-  }
   const now = new Date();
   return {
-    id: -((hash >>> 0) % 2_147_483_646 + 1),
+    id: `transient:${clerkOpenId(input.clerkUserId)}`,
     openId: clerkOpenId(input.clerkUserId),
     name: input.name,
     email: input.email,

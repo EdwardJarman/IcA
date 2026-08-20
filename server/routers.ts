@@ -70,7 +70,7 @@ export const appRouter = router({
   }),
   ai: router({
     status: protectedProcedure
-      .input(z.object({ provider: z.enum(["openrouter", "orcarouter"]).default("openrouter") }))
+      .input(z.object({ provider: z.enum(["openrouter", "orcarouter", "tokenrouter"]).default("openrouter") }))
       .query(({ input }) => getAiBackendStatus(input.provider)),
     models: protectedProcedure.query(async ({ ctx }) => ({
       provider: "multi" as const,
@@ -109,17 +109,27 @@ export const appRouter = router({
         address: z.string().min(2).max(40),
       }))
       .query(({ ctx, input }) => readExcelRange(ctx.user.id, input)),
+    pendingActions: protectedProcedure.query(async ({ ctx }) =>
+      (await db.listPendingExcelActions(ctx.user.id)).map((action) => ({
+        id: action.id,
+        botClientId: action.botClientId,
+        taskClientId: action.taskClientId,
+        summary: action.summary,
+        expiresAt: action.expiresAt.toISOString(),
+        createdAt: action.createdAt.toISOString(),
+      })),
+    ),
     resolveAction: protectedProcedure
       .input(z.object({ actionId: z.string().min(1).max(96), decision: z.enum(["approve", "decline"]) }))
       .mutation(async ({ ctx, input }) => {
-        const action = await db.getExcelPendingAction(ctx.user.id, input.actionId);
-        if (!action || action.state !== "pending") throw new Error("This Excel action is no longer pending");
+        const action = await db.claimExcelPendingAction(ctx.user.id, input.actionId);
+        if (!action) throw new Error("This Excel action is already being handled or is no longer pending");
         if (action.expiresAt.getTime() <= Date.now()) {
-          await db.resolveExcelPendingAction(ctx.user.id, action.id, { state: "expired" });
+          await db.finishExcelPendingAction(ctx.user.id, action.id, { state: "expired" });
           throw new Error("This Excel approval expired. Ask the Bot to prepare it again");
         }
         if (input.decision === "decline") {
-          await db.resolveExcelPendingAction(ctx.user.id, action.id, { state: "declined" });
+          await db.finishExcelPendingAction(ctx.user.id, action.id, { state: "declined" });
           return {
             executed: false,
             declined: true,
@@ -128,12 +138,23 @@ export const appRouter = router({
             taskId: action.taskClientId,
           };
         }
-        const result = await executeValidatedExcelWrite(
-          ctx.user.id,
-          action.toolName as ExcelToolName,
-          action.arguments as Record<string, unknown>,
-        );
-        await db.resolveExcelPendingAction(ctx.user.id, action.id, { state: "executed", result });
+        let result: unknown;
+        try {
+          result = await executeValidatedExcelWrite(
+            ctx.user.id,
+            action.toolName as ExcelToolName,
+            action.arguments as Record<string, unknown>,
+          );
+          await db.finishExcelPendingAction(ctx.user.id, action.id, { state: "executed", result });
+        } catch (error) {
+          await db.finishExcelPendingAction(ctx.user.id, action.id, {
+            state: "failed",
+            result: {
+              message: error instanceof Error ? error.message : "Excel write failed",
+            },
+          });
+          throw error;
+        }
         return {
           executed: true,
           declined: false,
@@ -179,11 +200,7 @@ export const appRouter = router({
     }),
     save: protectedProcedure.input(z.object({ snapshot: z.record(z.string(), z.unknown()) })).mutation(async ({ ctx, input }) => {
       const snapshot = normalizeWorkroomSnapshot(input.snapshot);
-      const [saved, normalized] = await Promise.all([
-        db.upsertWorkroomSnapshot(ctx.user.id, snapshot),
-        db.syncNormalizedWorkroomRecords(ctx.user.id, snapshot),
-      ]);
-      return { saved: saved && normalized };
+      return { saved: await db.saveWorkroomState(ctx.user.id, snapshot) };
     }),
   }),
   records: router({ list: protectedProcedure.query(({ ctx }) => db.listNormalizedWorkroomRecords(ctx.user.id)) }),

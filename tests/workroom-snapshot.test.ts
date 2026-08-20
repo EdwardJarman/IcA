@@ -19,8 +19,10 @@ describe("workroom cloud snapshots", () => {
     expect(normalizeWorkroomSnapshot(null)).toEqual(emptyWorkroomSnapshot());
   });
 
-  it("persists a valid ChatGPT preference and defaults old snapshots to OpenRouter", () => {
+  it("persists valid provider preferences and defaults old snapshots to OpenRouter", () => {
     expect(normalizeWorkroomSnapshot({ aiProvider: "chatgpt" }).aiProvider).toBe("chatgpt");
+    expect(normalizeWorkroomSnapshot({ aiProvider: "orcarouter" }).aiProvider).toBe("orcarouter");
+    expect(normalizeWorkroomSnapshot({ aiProvider: "tokenrouter" }).aiProvider).toBe("tokenrouter");
     expect(normalizeWorkroomSnapshot({ aiProvider: "unknown" }).aiProvider).toBe("openrouter");
     expect(normalizeWorkroomSnapshot({}).aiProvider).toBe("openrouter");
   });

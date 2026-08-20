@@ -41,7 +41,12 @@ import { botDropTargetProps, useBotDrag } from "@/lib/bot-drag";
 import { useRookNotifications } from "@/lib/rook-notifications";
 import { trpc } from "@/lib/trpc";
 import { tint } from "@/lib/ui";
-import { defaultModelForProvider, modelMatchesProvider, providerLabel } from "@/lib/ai-provider";
+import {
+  canonicalModelForProvider,
+  defaultModelForProvider,
+  modelMatchesProvider,
+  providerLabel,
+} from "@/lib/ai-provider";
 import { approvalReason, fileSizeLabel, requiresApproval } from "@/lib/workroom-helpers";
 import { useWorkroom, type Bot } from "@/lib/workroom-store";
 
@@ -84,9 +89,9 @@ export default function ChatScreen() {
   const resolvedModel = useMemo(() => {
     if (!activeBot) return undefined;
     const models = modelCatalog.data?.models ?? [];
-    const selected = models.find((model) => model.id === activeBot.model && modelMatchesProvider(model.id, workroom.aiProvider));
+    const canonical = canonicalModelForProvider(activeBot.model, workroom.aiProvider);
+    const selected = models.find((model) => model.id === canonical && modelMatchesProvider(model.id, workroom.aiProvider));
     if (selected) return selected;
-    if (activeBot.model && modelMatchesProvider(activeBot.model, workroom.aiProvider)) return { id: activeBot.model };
     return defaultModelForProvider(models, workroom.aiProvider) ??
       (workroom.aiProvider === "openrouter" ? { id: "openrouter/free" } : undefined);
   }, [activeBot, modelCatalog.data?.models, workroom.aiProvider]);
@@ -113,8 +118,8 @@ export default function ChatScreen() {
       Alert.alert(
         "No model available",
         workroom.aiProvider === "chatgpt"
-          ? "Reconnect ChatGPT or switch to another provider from Account."
-          : `Rook could not load a ${providerLabel(workroom.aiProvider)} model. Please try again.`,
+          ? "Reconnect ChatGPT or switch to OpenRouter from Account."
+          : `Rook could not load a ${providerLabel(workroom.aiProvider)} model. Check its server key or switch providers from Account.`,
       );
       return;
     }

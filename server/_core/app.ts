@@ -55,7 +55,11 @@ export function createApp() {
   });
 
   app.get("/api/health/ai", async (req, res) => {
-    const provider = req.query.provider === "orcarouter" ? "orcarouter" : "openrouter";
+    const provider = req.query.provider === "orcarouter"
+      ? "orcarouter"
+      : req.query.provider === "tokenrouter"
+        ? "tokenrouter"
+        : "openrouter";
     try {
       const status = await getAiBackendStatus(provider);
       res.status(status.operational ? 200 : 503).json(status);
@@ -64,11 +68,13 @@ export function createApp() {
         provider,
         configured: provider === "orcarouter"
           ? Boolean(process.env.ORCAROUTER_API_KEY)
-          : Boolean(process.env.OPENROUTER_API_KEY),
+          : provider === "tokenrouter"
+            ? Boolean(process.env.TOKENROUTER_API_KEY)
+            : Boolean(process.env.OPENROUTER_API_KEY),
         operational: false,
         freeModels: 0,
         dailyFreeRequestAllowance: null,
-        message: `${provider === "orcarouter" ? "OrcaRouter" : "OpenRouter"} health check failed.`,
+        message: `${provider === "orcarouter" ? "OrcaRouter" : provider === "tokenrouter" ? "TokenRouter" : "OpenRouter"} health check failed.`,
       });
     }
   });

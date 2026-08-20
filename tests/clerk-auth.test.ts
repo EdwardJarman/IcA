@@ -22,7 +22,7 @@ describe("Clerk request helpers", () => {
       email: "user@example.com",
     });
 
-    expect(first.id).toBeLessThan(0);
+    expect(first.id).toBe("transient:clerk:user_abc123");
     expect(first.id).toBe(second.id);
     expect(first.openId).toBe("clerk:user_abc123");
     expect(first.email).toBe("user@example.com");

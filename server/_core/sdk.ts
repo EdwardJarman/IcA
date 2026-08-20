@@ -3,7 +3,7 @@ import { ForbiddenError } from "../../shared/_core/errors.js";
 import axios, { type AxiosInstance } from "axios";
 import { parse as parseCookieHeader } from "cookie";
 import type { Request } from "express";
-import type { User } from "../../drizzle/schema";
+import type { User } from "../../shared/database";
 import * as db from "../db";
 import { ENV } from "./env";
 import type {
@@ -303,7 +303,7 @@ export type AuthenticatedUser = User & {
 function buildCronUser(userInfo: GetUserInfoWithJwtResponse): AuthenticatedUser {
   const now = new Date();
   return {
-    id: -1,
+    id: `cron:${userInfo.openId}`,
     openId: userInfo.openId,
     name: userInfo.name || "Manus Scheduled Task",
     email: null,

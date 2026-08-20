@@ -3,13 +3,16 @@ import { useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
 import { trpc } from "@/lib/trpc";
+import { canonicalModelForProvider, defaultModelForProvider, modelsForProvider, providerLabel, type AiProvider } from "@/lib/ai-provider";
 import { tint, useRookTheme } from "@/lib/ui";
 
 export function AiModelSelector({
   value,
+  provider,
   onChange,
 }: {
   value: string;
+  provider: AiProvider;
   onChange: (modelId: string) => void;
 }) {
   const { colors, dark } = useRookTheme();
@@ -19,14 +22,14 @@ export function AiModelSelector({
     retry: 1,
   });
   const models = useMemo(
-    () => catalog.data?.models ?? [],
-    [catalog.data?.models],
+    () => modelsForProvider(catalog.data?.models ?? [], provider),
+    [catalog.data?.models, provider],
   );
   const selected = useMemo(
     () =>
-      models.find((model) => model.id === value) ??
-      models.find((model) => model.automatic),
-    [models, value],
+      models.find((model) => model.id === canonicalModelForProvider(value, provider)) ??
+      defaultModelForProvider(models, provider),
+    [models, provider, value],
   );
 
   return (
@@ -91,7 +94,7 @@ export function AiModelSelector({
               ? `${selected.provider} · ${selected.usageLabel}${selected.supportsVision ? " · Vision" : ""}`
               : catalog.isError
                 ? "Live model list is temporarily unavailable"
-                : "OpenRouter · Free"}
+                : `${providerLabel(provider)} · Free`}
           </Text>
         </View>
         <MaterialIcons
@@ -183,7 +186,7 @@ export function AiModelSelector({
                   padding: 15,
                 }}
               >
-                Rook could not load the live free-model list. Auto routing will be used.
+                Rook could not load {providerLabel(provider)} models. Check the provider connection in Account.
               </Text>
             ) : null}
           </ScrollView>
