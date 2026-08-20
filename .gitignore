@@ -68,3 +68,6 @@ Thumbs.db
 .vercel
 .env*
 !.env.example
+
+# Local tool workspaces (never committed)
+.kilo/

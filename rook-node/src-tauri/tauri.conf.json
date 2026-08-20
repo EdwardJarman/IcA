@@ -1,0 +1,37 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Rook Node",
+  "version": "0.1.0",
+  "identifier": "com.rook.node",
+  "build": {
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "pnpm --dir ../ build",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../web"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Rook Node",
+        "width": 980,
+        "height": 680,
+        "minWidth": 720,
+        "minHeight": 520,
+        "resizable": true,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "appimage", "dmg"],
+    "category": "Utility",
+    "externalBin": ["binaries/rook-node"],
+    "shortDescription": "Rook Node — the forever-free computer runner for your Bots.",
+    "longDescription": "Rook Node runs a supervised, version-pinned Chromium on the user's own computer. It provides a dedicated Rook profile, per-Bot tab groups, a control gateway, durable local state, a shared workspace, and live-screen input control. The app remains the control surface; the user's own machine becomes the Bot computer."
+  },
+  "plugins": {}
+}
