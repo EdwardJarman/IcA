@@ -181,7 +181,7 @@ export function parseExcelToolArguments(name: string, raw: string | Record<strin
   return schemas[name as ExcelToolName].parse(input) as Record<string, unknown>;
 }
 
-export async function executeExcelReadTool(userId: number, name: ExcelToolName, args: Record<string, unknown>) {
+export async function executeExcelReadTool(userId: string, name: ExcelToolName, args: Record<string, unknown>) {
   switch (name) {
     case "excel_list_workbooks":
       return listExcelWorkbooks(userId);
@@ -216,7 +216,7 @@ export function excelWriteSummary(name: ExcelToolName, args: Record<string, unkn
   }
 }
 
-export async function executeValidatedExcelWrite(userId: number, name: ExcelToolName, args: Record<string, unknown>) {
+export async function executeValidatedExcelWrite(userId: string, name: ExcelToolName, args: Record<string, unknown>) {
   const parsed = schemas[name].parse(args) as Record<string, unknown>;
   const normalized = {
     driveId: parsed.drive_id,

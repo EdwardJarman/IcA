@@ -63,7 +63,7 @@ export function BotCreateSheet({
   onCreated?: (bot: Bot) => void;
 }) {
   const { colors, dark } = useRookTheme();
-  const { createBot } = useWorkroom();
+  const { aiProvider, createBot } = useWorkroom();
   const { width, height } = useWindowDimensions();
   const [step, setStep] = useState<Step>(1);
   const [name, setName] = useState("");
@@ -298,7 +298,7 @@ export function BotCreateSheet({
                         borderColor: colors.lineStrong,
                       }}
                     />
-                    <AiModelSelector value={model} onChange={setModel} />
+                    <AiModelSelector value={model} provider={aiProvider} onChange={setModel} />
                     <View
                       style={[
                         styles.summaryCard,

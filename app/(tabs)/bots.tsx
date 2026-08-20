@@ -22,7 +22,7 @@ import { useWorkroom, type Bot } from "@/lib/workroom-store";
 
 export default function BotsScreen() {
   const { colors } = useRookTheme();
-  const { bots, selectedBotId, selectBot, updateBotStatus, updateBotModel } = useWorkroom();
+  const { aiProvider, bots, selectedBotId, selectBot, updateBotStatus, updateBotModel } = useWorkroom();
   const [openBot, setOpenBot] = useState<Bot | null>(null);
   const [newOpen, setNewOpen] = useState(false);
   const dockScroll = useDockScroll();
@@ -127,6 +127,7 @@ export default function BotsScreen() {
             <View style={{ gap: 12, marginTop: 18 }}>
               <AiModelSelector
                 value={openBot.model || "openrouter/free"}
+                provider={aiProvider}
                 onChange={(model) => {
                   updateBotModel(openBot.id, model);
                   setOpenBot({ ...openBot, model, lastActive: "Model updated" });

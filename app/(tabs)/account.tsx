@@ -37,6 +37,7 @@ export default function AccountScreen() {
           <ChatGPTConnectionCard />
           <AiBackendCard provider="openrouter" />
           <AiBackendCard provider="orcarouter" />
+          <AiBackendCard provider="tokenrouter" />
         </View>
         <View style={{ gap: 12 }}>
           <SectionHeader title="Connected apps" caption="Give your Bots useful access without giving up control." />

@@ -1,5 +1,5 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, Text, View } from "react-native";
 
 import {
@@ -21,8 +21,29 @@ export default function ActivityScreen() {
   const { colors } = useRookTheme();
   const { approvals, bots, activity, notifications, resolveApproval, markNotificationsRead, updateTaskStatus, addMessage, addActivity } = useWorkroom();
   const resolveExcelAction = trpc.excel.resolveAction.useMutation();
+  const serverPendingActions = trpc.excel.pendingActions.useQuery(undefined, {
+    retry: 1,
+    refetchOnWindowFocus: true,
+  });
   const [resolvingId, setResolvingId] = useState<string | null>(null);
-  const pendingApprovals = approvals.filter((approval) => approval.state === "Pending");
+  const pendingApprovals = useMemo(() => {
+    const local = approvals.filter((approval) => approval.state === "Pending");
+    const known = new Set(local.map((approval) => approval.externalActionId).filter(Boolean));
+    const recovered: Approval[] = (serverPendingActions.data ?? [])
+      .filter((action) => !known.has(action.id))
+      .map((action) => ({
+        id: `server-${action.id}`,
+        title: action.summary,
+        detail: "This Excel change was prepared by a Bot and is waiting for your decision.",
+        botId: action.botClientId,
+        taskId: action.taskClientId,
+        externalActionId: action.id,
+        risk: "Medium",
+        state: "Pending",
+        createdAt: new Date(action.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      }));
+    return [...local, ...recovered];
+  }, [approvals, serverPendingActions.data]);
   const unreadCount = notifications.filter((notification) => !notification.read).length;
   const dockScroll = useDockScroll();
 
@@ -36,6 +57,7 @@ export default function ActivityScreen() {
     try {
       const result = await resolveExcelAction.mutateAsync({ actionId: approval.externalActionId, decision });
       resolveApproval(approval.id, decision === "approve" ? "Approved" : "Declined");
+      await serverPendingActions.refetch();
       if (result.executed) {
         if (approval.taskId) updateTaskStatus(approval.taskId, "Completed", "The approved Excel change was applied successfully.");
         addMessage({ botId: approval.botId, author: "bot", body: `Excel updated. ${result.summary}`, kind: "result", taskId: approval.taskId });
