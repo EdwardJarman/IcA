@@ -30,6 +30,8 @@ export class RookNode {
   readonly runtime: ChromiumRuntime;
   private readonly validator: CommandValidator;
   private readonly bindings = new Map<string, DeviceBinding>();
+  /** In-memory pageId → live Page map; rebuilt lazily after browser restarts. */
+  private readonly pages = new Map<string, Page>();
 
   constructor(readonly config: RookConfig, options: { headless?: boolean; channel?: string } = {}) {
     this.db = new RookDatabase(config);
@@ -102,6 +104,17 @@ export class RookNode {
 
   private async runAction(command: CommandEnvelope): Promise<unknown> {
     const needsApproval = SENSITIVE_CAPABILITIES.has(command.capability);
+
+    // Tab lifecycle actions mutate the registry, not a single page.
+    if (command.action.type === "newTab") return this.openTabForCommand(command);
+    if (command.action.type === "closeTab") return this.closeTabForCommand(command);
+    if (command.action.type === "switchTab") {
+      const page = await this.pageFor(command.botId, command.action.pageId);
+      if (!page) return { type: "unknownPage" };
+      await page.bringToFront().catch(() => undefined);
+      return { type: "switchTab" };
+    }
+
     const page = await this.pageFor(command.botId, command.pageId);
     if (!page) return { type: "unknownPage" };
 
@@ -115,17 +128,87 @@ export class RookNode {
 
     if (result && "url" in result && typeof result.url === "string") {
       this.registry.recordNavigation(command.pageId, result.url);
+      await page.title().then((title) => this.registry.updateTabTitle(command.pageId, title)).catch(() => undefined);
     }
     this.runtime.checkpoint(this.db);
     return result;
   }
 
+  /** Creates a live tab + registry entry for the Bot. The action's url is optional. */
+  private async openTabForCommand(command: CommandEnvelope): Promise<unknown> {
+    const context = this.runtime.getContext();
+    if (!context) return { type: "browserNotRunning" };
+    const action = command.action as { type: "newTab"; url: string };
+    let tab;
+    try {
+      tab = this.registry.openTab(command.botId, action.url || "about:blank");
+    } catch (error) {
+      throw Object.assign(error instanceof Error ? error : new Error(String(error)), { code: "LEASE" });
+    }
+    const page = await context.newPage();
+    this.pages.set(tab.id, page);
+    if (action.url && action.url !== "about:blank") {
+      const decision = await evaluateUrlWithDns(action.url);
+      if (!decision.allowed) {
+        await page.close().catch(() => undefined);
+        this.pages.delete(tab.id);
+        this.registry.closeTab(tab.id);
+        throw Object.assign(new Error(`Navigation blocked: ${decision.reason}`), { code: "NAV_BLOCKED" });
+      }
+      try {
+        await page.goto(action.url, { waitUntil: "domcontentloaded", timeout: 45_000 });
+        await page.title().then((title) => this.registry.updateTabTitle(tab.id, title)).catch(() => undefined);
+        this.registry.recordNavigation(tab.id, page.url());
+      } catch (error) {
+        throw Object.assign(error instanceof Error ? error : new Error(String(error)), { code: "TIMEOUT" });
+      }
+    } else {
+      this.registry.recordNavigation(tab.id, "about:blank");
+    }
+    this.runtime.checkpoint(this.db);
+    return { type: "newTab", pageId: tab.id, url: tab.url };
+  }
+
+  private async closeTabForCommand(command: CommandEnvelope): Promise<unknown> {
+    const action = command.action as { type: "closeTab"; pageId?: string };
+    const targetId = action.pageId ?? command.pageId;
+    const page = this.pages.get(targetId);
+    if (page) {
+      await page.close().catch(() => undefined);
+      this.pages.delete(targetId);
+    }
+    if (this.registry.tabRevision(targetId) !== undefined) this.registry.closeTab(targetId);
+    this.runtime.checkpoint(this.db);
+    return { type: "closeTab", closedPageId: targetId };
+  }
+
   private async pageFor(botId: string, pageId: string): Promise<Page | null> {
+    const mapped = this.pages.get(pageId);
+    if (mapped && !mapped.isClosed()) return mapped;
+
+    // Re-adopt after restart: match by URL recorded in the registry.
     const context = this.runtime.getContext();
     if (!context) return null;
-    const pages = context.pages();
-    const target = pages.find((page) => page.url() !== "about:blank") ?? pages[0];
-    return target ?? null;
+    const tab = this.registry.tabsForBot(botId).find((entry) => entry.id === pageId);
+    const candidate =
+      (tab ? context.pages().find((page) => page.url() === tab.url && !page.isClosed()) : undefined) ??
+      context.pages().find((page) => page.url() !== "about:blank" && !page.isClosed()) ??
+      context.pages().find((page) => !page.isClosed());
+    if (candidate) this.pages.set(pageId, candidate);
+    return candidate ?? null;
+  }
+
+  /** Registers a cloud-issued approval grant as a local approved record. */
+  ingestCloudApproval(input: {
+    botId: string;
+    pageId: string;
+    action: TypedAction;
+    capability: Capability;
+    origin: string;
+    summary: string;
+    grant: { approvalId: string; nonce: string; expiresAt: number; pageRevision: number };
+  }): void {
+    this.approvals.ingestCloudApproval(input);
   }
 
   private errorCode(error: unknown): CommandRejectCode {

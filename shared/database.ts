@@ -106,3 +106,32 @@ export type WorkroomSnapshotRecord = {
   createdAt: Date;
   updatedAt: Date;
 };
+
+export type RookNodeRecord = {
+  id: string;
+  nodeId: string;
+  userId: string;
+  name: string;
+  status: "online" | "offline" | "revoked";
+  version: string;
+  lastSeenAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+/** Cloud-side command queued for a Rook Node. `envelope` is the node protocol CommandEnvelope. */
+export type NodeCommandRecord = {
+  id: string;
+  commandId: string;
+  userId: string;
+  nodeId: string;
+  state: "awaiting_approval" | "pending" | "delivered" | "completed" | "declined" | "expired";
+  summary: string;
+  capability: string;
+  envelope: Record<string, unknown>;
+  approval?: Record<string, unknown>;
+  result?: unknown;
+  expiresAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};

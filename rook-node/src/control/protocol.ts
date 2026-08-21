@@ -71,9 +71,13 @@ export class CommandValidator {
     if (!binding.allowedBotIds.includes(command.botId)) return { ok: false, code: "CROSS_BOT", message: "Device cannot drive this Bot" };
 
     // Page revision
-    const revision = this.deps.tabRevision(command.pageId);
-    if (revision === undefined) return { ok: false, code: "REVISION", message: "Unknown page" };
-    if (command.pageRevision !== revision) return { ok: false, code: "REVISION", message: "Page changed since command was prepared" };
+    // newTab is allowed to carry a placeholder page: the tab cannot exist
+    // before the command that creates it.
+    if (command.action.type !== "newTab") {
+      const revision = this.deps.tabRevision(command.pageId);
+      if (revision === undefined) return { ok: false, code: "REVISION", message: "Unknown page" };
+      if (command.pageRevision !== revision) return { ok: false, code: "REVISION", message: "Page changed since command was prepared" };
+    }
 
     // Capability must be claimable for the action.
     if (!allowsCapability(command.action, command.capability)) {

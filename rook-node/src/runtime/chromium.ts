@@ -7,7 +7,12 @@
  * is restored.
  */
 import path from "node:path";
+import fs from "node:fs";
+import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
 import { chromium, type BrowserContext, type Browser } from "playwright";
+
+const require = createRequire(import.meta.url);
 
 import type { RookConfig } from "../config.js";
 import { profileDir } from "../config.js";
@@ -155,4 +160,55 @@ export function assertProfileIsDedicated(config: RookConfig): boolean {
     path.join("appdata", "roaming", "mozilla", "firefox").toLowerCase(),
   ];
   return !forbidden.some((segment) => lowered.includes(segment));
+}
+
+/**
+ * Downloads the pinned Chromium build if it is missing. Runs once per process;
+ * the checksummed download comes from Playwright's own CDN via the pinned
+ * package version, so the browser always matches the pinned driver.
+ */
+let chromiumDownload: Promise<void> | null = null;
+
+export async function ensurePinnedChromium(log: (message: string) => void = () => undefined): Promise<void> {
+  let expected: string | null = null;
+  try {
+    expected = chromium.executablePath();
+  } catch {
+    expected = null;
+  }
+  if (expected && fs.existsSync(expected)) return;
+  if (!chromiumDownload) {
+    chromiumDownload = downloadChromium(log).catch((error) => {
+      chromiumDownload = null;
+      throw error;
+    });
+  }
+  return chromiumDownload;
+}
+
+function downloadChromium(log: (message: string) => void): Promise<void> {
+  log(`[rook-node] Downloading pinned Chromium (${PINNED_PLAYWRIGHT}); first run only…`);
+  return new Promise((resolve, reject) => {
+    const child = spawn(
+      process.execPath,
+      [
+        // Use this install's playwright CLI so versions stay lockstep.
+        path.join(path.dirname(require.resolve("playwright/package.json")), "cli.js"),
+        "install",
+        "chromium",
+      ],
+      { stdio: ["ignore", "pipe", "pipe"], shell: false },
+    );
+    child.stdout.on("data", (chunk: Buffer) => log(chunk.toString().trim()));
+    child.stderr.on("data", (chunk: Buffer) => log(chunk.toString().trim()));
+    child.on("error", reject);
+    child.on("exit", (code) => {
+      if (code === 0) {
+        log("[rook-node] Chromium ready.");
+        resolve();
+      } else {
+        reject(new Error(`Chromium download failed with exit code ${code}.`));
+      }
+    });
+  });
 }

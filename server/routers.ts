@@ -1,6 +1,11 @@
 import { z } from "zod";
 
 import { normalizeWorkroomSnapshot } from "../shared/workroom-snapshot";
+import {
+  buildCommandEnvelope,
+  generateCommandId,
+  isSensitiveCapability,
+} from "../shared/node-relay";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { systemRouter } from "./_core/systemRouter";
 import { getAiBackendStatus, listAiModels } from "./ai";
@@ -225,6 +230,89 @@ export const appRouter = router({
         return db.deleteAccountWorkroomData(ctx.user.id);
       }),
   }),
+  nodes: router({
+    list: protectedProcedure.query(({ ctx }) => db.listRookNodesForUser(ctx.user.id)),
+    createPairing: protectedProcedure.mutation(async ({ ctx }) => {
+      const created = await db.createPairingToken(ctx.user.id);
+      if (!created) throw new Error("Pairing is temporarily unavailable.");
+      return { token: created.token, expiresAt: created.expiresAt.toISOString() };
+    }),
+    rename: protectedProcedure.input(z.object({
+      nodeId: z.string().min(4).max(80),
+      name: z.string().min(1).max(80),
+    })).mutation(({ ctx, input }) => db.renameRookNode(ctx.user.id, input.nodeId, input.name)),
+    remove: protectedProcedure.input(z.object({
+      nodeId: z.string().min(4).max(80),
+    })).mutation(({ ctx, input }) => db.revokeRookNode(ctx.user.id, input.nodeId)),
+    commands: protectedProcedure.query(({ ctx }) => db.listRecentNodeCommands(ctx.user.id)),
+    requestCommand: protectedProcedure.input(z.object({
+      nodeId: z.string().min(4).max(80),
+      botId: z.string().min(1).max(128),
+      pageId: z.string().min(1).max(128),
+      pageRevision: z.number().int().nonnegative(),
+      seq: z.number().int().positive(),
+      capability: z.string().min(1).max(40),
+      action: z.record(z.string(), z.unknown()),
+      summary: z.string().min(1).max(300),
+    })).mutation(async ({ ctx, input }) => {
+      const envelope = buildCommandEnvelope({
+        userId: ctx.user.id,
+        botId: input.botId,
+        pageId: input.pageId,
+        pageRevision: input.pageRevision,
+        capability: input.capability,
+        action: input.action,
+        seq: input.seq,
+      });
+      const record = await db.enqueueNodeCommand({
+        commandId: generateCommandId(),
+        userId: ctx.user.id,
+        nodeId: input.nodeId,
+        summary: input.summary,
+        capability: input.capability,
+        envelope,
+        requiresApproval: isSensitiveCapability(input.capability),
+      });
+      if (!record) throw new Error("That computer is not available.");
+      const needsApproval = record.state === "awaiting_approval";
+      if (needsApproval) await notifyNodeApprovalRequest(ctx.user.id, input.summary);
+      return {
+        commandId: record.commandId,
+        state: record.state,
+        requiresApproval: needsApproval,
+      };
+    }),
+    decideCommand: protectedProcedure.input(z.object({
+      commandId: z.string().min(4).max(80),
+      decision: z.enum(["approved", "declined"]),
+    })).mutation(({ ctx, input }) =>
+      db.decideNodeCommand(ctx.user.id, input.commandId, input.decision).then((record) => ({
+        decided: Boolean(record?.state === "pending" || (record?.state === "declined" && input.decision === "declined")),
+      })),
+    ),
+  }),
 });
+
+/** Pushes an "approval needed" alert to the owner's devices. */
+async function notifyNodeApprovalRequest(userId: string, summary: string): Promise<void> {
+  try {
+    const preferences = await db.getNotificationPreferences(userId);
+    if (preferences?.approvalEnabled === false) return;
+    const devices = await db.getPushDevicesForUser(userId);
+    await Promise.all(
+      devices
+        .filter((device) => device.approvalEnabled)
+        .map((device) => sendExpoPushAlert({
+          expoPushToken: device.expoPushToken,
+          kind: "approval",
+          title: "Rook Node needs your approval",
+          body: summary.slice(0, 170),
+          url: "/activity",
+        })),
+    );
+  } catch {
+    // Push delivery must never block the command path.
+  }
+}
 
 export type AppRouter = typeof appRouter;

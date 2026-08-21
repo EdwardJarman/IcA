@@ -69,6 +69,39 @@ export class ApprovalManager {
   }
 
   /**
+   * Ingests a cloud-issued approval grant as an approved local record bound to
+   * the exact action. The command still carries the proof and passes through
+   * the same validateProof/consumeNonce gauntlet — the cloud is only ever the
+   * approver of record; the node remains the enforcement point.
+   */
+  ingestCloudApproval(input: {
+    botId: string;
+    pageId: string;
+    action: TypedAction;
+    capability: Capability;
+    origin: string;
+    summary: string;
+    grant: { approvalId: string; nonce: string; expiresAt: number; pageRevision: number };
+  }): void {
+    const record: ApprovalRecord = {
+      id: input.grant.approvalId,
+      botId: input.botId,
+      pageId: input.pageId,
+      capability: input.capability,
+      action: input.action,
+      origin: input.origin,
+      recipient: undefined,
+      summary: input.summary,
+      fileHashes: [],
+      pageRevision: input.grant.pageRevision,
+      state: "approved",
+      expiresAt: new Date(input.grant.expiresAt).toISOString(),
+      createdAt: new Date().toISOString(),
+    };
+    this.db.insertApproval(record);
+  }
+
+  /**
    * Validates an ApprovalProof carried by a command. Returns a rejection code
    * or undefined when the approval is valid and unexpired.
    */

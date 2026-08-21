@@ -6,6 +6,8 @@ import { getAiBackendStatus } from "../ai";
 import { handleChatGPTRoute } from "../ai/chatgpt";
 import { createContext } from "./context";
 import { registerOAuthRoutes } from "./oauth";
+import { registerNodeRelayRoutes } from "../node-relay-routes";
+import * as db from "../db";
 import { registerStorageProxy } from "./storageProxy";
 
 function allowedOrigins() {
@@ -49,6 +51,18 @@ export function createApp() {
 
   registerStorageProxy(app);
   registerOAuthRoutes(app);
+  registerNodeRelayRoutes(app, {
+    consumePairingToken: (token) => db.consumePairingToken(token),
+    markPairingTokenUsed: (token, nodeId) => db.markPairingTokenUsed(token, nodeId),
+    createRookNode: (input) => db.createRookNode(input),
+    getRookNode: async (nodeId) => {
+      const auth = await db.getRookNodeAuth(nodeId);
+      return auth;
+    },
+    touchRookNode: (nodeId, version) => db.touchRookNode(nodeId, version),
+    completeNodeCommand: (commandId, report) => db.completeNodeCommand(commandId, report),
+    takePendingNodeCommands: (nodeId) => db.takePendingNodeCommands(nodeId),
+  });
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, timestamp: Date.now() });

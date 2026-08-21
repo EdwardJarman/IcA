@@ -140,6 +140,15 @@ CREATE TABLE IF NOT EXISTS checkpoints (
   payload TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS cloud_identity (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  server_url TEXT NOT NULL,
+  user_id TEXT NOT NULL DEFAULT '',
+  node_id TEXT NOT NULL,
+  node_secret TEXT NOT NULL,
+  paired_at TEXT NOT NULL
+);
 `;
 
 type Row = Record<string, unknown>;
@@ -564,5 +573,35 @@ export class RookDatabase {
       label: row.label as string,
       createdAt: row.created_at as string,
     }));
+  }
+
+  /* ---- cloud identity (uplink credentials) ---- */
+
+  saveCloudIdentity(identity: { serverUrl: string; userId: string; nodeId: string; nodeSecret: string; pairedAt: string }): void {
+    this.run(
+      "INSERT INTO cloud_identity (id, server_url, user_id, node_id, node_secret, paired_at) VALUES (1, ?, ?, ?, ?, ?) " +
+        "ON CONFLICT(id) DO UPDATE SET server_url=excluded.server_url, user_id=excluded.user_id, node_id=excluded.node_id, node_secret=excluded.node_secret, paired_at=excluded.paired_at",
+      identity.serverUrl,
+      identity.userId,
+      identity.nodeId,
+      identity.nodeSecret,
+      identity.pairedAt,
+    );
+  }
+
+  getCloudIdentity(): { serverUrl: string; userId: string; nodeId: string; nodeSecret: string; pairedAt: string } | undefined {
+    const row = this.get<Row>("SELECT server_url, user_id, node_id, node_secret, paired_at FROM cloud_identity WHERE id = 1");
+    if (!row) return undefined;
+    return {
+      serverUrl: String(row.server_url ?? ""),
+      userId: String(row.user_id ?? ""),
+      nodeId: String(row.node_id ?? ""),
+      nodeSecret: String(row.node_secret ?? ""),
+      pairedAt: String(row.paired_at ?? ""),
+    };
+  }
+
+  clearCloudIdentity(): void {
+    this.run("DELETE FROM cloud_identity WHERE id = 1");
   }
 }

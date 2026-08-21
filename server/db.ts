@@ -1,5 +1,14 @@
 import { id, init } from "@instantdb/admin";
+import { randomBytes } from "node:crypto";
 
+import {
+  APPROVAL_GRANT_TTL_MS,
+  COMMAND_TTL_MS,
+  PAIRING_TOKEN_TTL_MS,
+  generateApprovalId,
+  generatePairingToken,
+  hashToken,
+} from "../shared/node-relay";
 import schema from "../instant.schema";
 import type {
   ExcelPendingAction,
@@ -8,7 +17,9 @@ import type {
   InsertPushDevice,
   InsertUser,
   MicrosoftConnection,
+  NodeCommandRecord,
   PushDevice,
+  RookNodeRecord,
   User,
 } from "../shared/database";
 import type { WorkroomCloudSnapshot } from "../shared/workroom-snapshot";
@@ -68,6 +79,9 @@ async function transactInBatches(database: InstantDb, chunks: InstantTx[]) {
 const nullable = <T>(value: T | null | undefined): T | null => value ?? null;
 const asDate = (value: Date | string | number): Date =>
   value instanceof Date ? value : new Date(value);
+/** asDate for loosely-typed InstantDB rows. */
+const asDateValue = (value: unknown): Date =>
+  value instanceof Date ? value : typeof value === "string" || typeof value === "number" ? new Date(value) : new Date(0);
 const withTimestamps = <T extends { createdAt: Date; updatedAt: Date }>(
   entity: T,
 ): T => ({
@@ -781,4 +795,308 @@ export async function deleteAccountWorkroomData(userId: string) {
   const transactions = deletionTransactions(database, result);
   await transactInBatches(database, transactions);
   return true;
+}
+
+/* ---- Rook Node relay ---- */
+
+const asRookNode = (entity: Record<string, unknown> & { id: string }): RookNodeRecord => ({
+  id: entity.id,
+  nodeId: textValue(entity, "nodeId"),
+  userId: textValue(entity, "userId"),
+  name: textValue(entity, "name", "Computer"),
+  status: (textValue(entity, "status", "offline") as RookNodeRecord["status"]),
+  version: textValue(entity, "version"),
+  lastSeenAt: asDateValue(entity.lastSeenAt),
+  createdAt: asDateValue(entity.createdAt),
+  updatedAt: asDateValue(entity.updatedAt),
+});
+
+export async function createPairingToken(userId: string): Promise<{ token: string; expiresAt: Date } | undefined> {
+  const database = await getDb();
+  if (!database) return undefined;
+  const token = generatePairingToken();
+  const expiresAt = new Date(Date.now() + PAIRING_TOKEN_TTL_MS);
+  await database.transact(
+    database.tx.pairingTokens[id()].update({
+      tokenHash: hashToken(token),
+      userId,
+      expiresAt,
+      createdAt: new Date(),
+    }),
+  );
+  return { token, expiresAt };
+}
+
+/** Marks a pairing token used and returns its owner's user id. Single use. */
+export async function consumePairingToken(token: string): Promise<string | undefined> {
+  const database = await getDb();
+  if (!database) return undefined;
+  const { pairingTokens } = await database.query({
+    pairingTokens: { $: { where: { tokenHash: hashToken(token) }, limit: 1 } },
+  });
+  const record = pairingTokens[0];
+  if (!record) return undefined;
+  if (record.usedByNodeId) return undefined;
+  if (asDate(record.expiresAt).getTime() <= Date.now()) return undefined;
+  return record.userId;
+}
+
+export async function markPairingTokenUsed(token: string, nodeId: string): Promise<void> {
+  const database = await getDb();
+  if (!database) return;
+  await database.transact(
+    database.tx.pairingTokens.lookup("tokenHash", hashToken(token)).update({
+      usedByNodeId: nodeId,
+    }),
+  );
+}
+
+export async function createRookNode(input: {
+  nodeId: string;
+  userId: string;
+  name: string;
+  secretHash: string;
+  version: string;
+}): Promise<RookNodeRecord | undefined> {
+  const database = await getDb();
+  if (!database) return undefined;
+  const now = new Date();
+  await database.transact(
+    database.tx.rookNodes[id()].update({
+      ...input,
+      status: "online",
+      lastSeenAt: now,
+      createdAt: now,
+      updatedAt: now,
+    }),
+  );
+  const created = await getRookNode(input.nodeId);
+  return created;
+}
+
+export async function getRookNode(nodeId: string): Promise<RookNodeRecord | undefined> {
+  const database = await getDb();
+  if (!database) return undefined;
+  const { rookNodes } = await database.query({
+    rookNodes: { $: { where: { nodeId }, limit: 1 } },
+  });
+  const raw = rookNodes[0] as unknown as (Record<string, unknown> & { id: string }) | undefined;
+  return raw ? asRookNode(raw) : undefined;
+}
+
+/** Auth lookup for the sync route. The secret hash never leaves the server process. */
+export async function getRookNodeAuth(nodeId: string): Promise<{ secretHash: string; status: string } | undefined> {
+  const database = await getDb();
+  if (!database) return undefined;
+  const { rookNodes } = await database.query({
+    rookNodes: { $: { where: { nodeId }, limit: 1 } },
+  });
+  const raw = rookNodes[0] as unknown as (Record<string, unknown> & { id: string }) | undefined;
+  if (!raw) return undefined;
+  return { secretHash: textValue(raw, "secretHash"), status: textValue(raw, "status", "offline") };
+}
+
+export async function listRookNodesForUser(userId: string): Promise<RookNodeRecord[]> {
+  const database = await getDb();
+  if (!database) return [];
+  const { rookNodes } = await database.query({
+    rookNodes: { $: { where: { userId } } },
+  });
+  return (rookNodes as unknown as Array<Record<string, unknown> & { id: string }>)
+    .map(asRookNode)
+    .sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime());
+}
+
+export async function revokeRookNode(userId: string, nodeId: string): Promise<boolean> {
+  const existing = await getRookNode(nodeId);
+  if (!existing || existing.userId !== userId) return false;
+  const database = await requireDb();
+  await database.transact(
+    database.tx.rookNodes.lookup("nodeId", nodeId).update({ status: "revoked", updatedAt: new Date() }),
+  );
+  return true;
+}
+
+export async function renameRookNode(userId: string, nodeId: string, name: string): Promise<boolean> {
+  const existing = await getRookNode(nodeId);
+  if (!existing || existing.userId !== userId) return false;
+  const database = await requireDb();
+  await database.transact(
+    database.tx.rookNodes.lookup("nodeId", nodeId).update({ name, updatedAt: new Date() }),
+  );
+  return true;
+}
+
+export async function touchRookNode(nodeId: string, version: string): Promise<void> {
+  const database = await getDb();
+  if (!database) return;
+  await database.transact(
+    database.tx.rookNodes.lookup("nodeId", nodeId).update({
+      status: "online",
+      version,
+      lastSeenAt: new Date(),
+      updatedAt: new Date(),
+    }),
+  );
+}
+
+export async function markRookNodeOffline(nodeId: string): Promise<void> {
+  const database = await getDb();
+  if (!database) return;
+  await database.transact(
+    database.tx.rookNodes.lookup("nodeId", nodeId).update({ status: "offline", updatedAt: new Date() }),
+  );
+}
+
+export async function enqueueNodeCommand(input: {
+  commandId: string;
+  userId: string;
+  nodeId: string;
+  summary: string;
+  capability: string;
+  envelope: Record<string, unknown>;
+  requiresApproval: boolean;
+}): Promise<NodeCommandRecord | undefined> {
+  const node = await getRookNode(input.nodeId);
+  if (!node || node.userId !== input.userId || node.status === "revoked") return undefined;
+  const database = await requireDb();
+  const now = new Date();
+  await database.transact(
+    database.tx.nodeCommands[id()].update({
+      commandId: input.commandId,
+      userId: input.userId,
+      nodeId: input.nodeId,
+      state: input.requiresApproval ? "awaiting_approval" : "pending",
+      summary: input.summary.slice(0, 300),
+      capability: input.capability.slice(0, 40),
+      envelope: input.envelope,
+      expiresAt: new Date(now.getTime() + COMMAND_TTL_MS),
+      createdAt: now,
+      updatedAt: now,
+    }),
+  );
+  return {
+    id: input.commandId,
+    commandId: input.commandId,
+    userId: input.userId,
+    nodeId: input.nodeId,
+    state: input.requiresApproval ? "awaiting_approval" : "pending",
+    summary: input.summary.slice(0, 300),
+    capability: input.capability.slice(0, 40),
+    envelope: input.envelope,
+    expiresAt: new Date(now.getTime() + COMMAND_TTL_MS),
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+/**
+ * Applies the owner's decision to an awaiting command. Approval embeds a
+ * short-lived grant bound to the page revision; decline marks it declined.
+ */
+export async function decideNodeCommand(
+  userId: string,
+  commandId: string,
+  decision: "approved" | "declined",
+): Promise<NodeCommandRecord | undefined> {
+  const database = await getDb();
+  if (!database) return undefined;
+  const { nodeCommands } = await database.query({
+    nodeCommands: { $: { where: { commandId }, limit: 1 } },
+  });
+  const raw = nodeCommands[0] as unknown as (Record<string, unknown> & { id: string }) | undefined;
+  if (!raw || textValue(raw, "userId") !== userId) return undefined;
+  if (textValue(raw, "state") !== "awaiting_approval") return existingNodeCommand(raw);
+
+  if (decision === "declined") {
+    await database.transact(
+      database.tx.nodeCommands[raw.id].update({ state: "declined", updatedAt: new Date() }),
+    );
+    return existingNodeCommand({ ...raw, state: "declined" });
+  }
+
+  const grant = {
+    approvalId: generateApprovalId(),
+    nonce: randomBytes(24).toString("hex"),
+    expiresAt: Date.now() + APPROVAL_GRANT_TTL_MS,
+    pageRevision:
+      typeof record(raw.envelope).pageRevision === "number"
+        ? (record(raw.envelope).pageRevision as number)
+        : 0,
+  };
+  await database.transact(
+    database.tx.nodeCommands[raw.id].update({
+      state: "pending",
+      approval: grant,
+      updatedAt: new Date(),
+    }),
+  );
+  return existingNodeCommand({ ...raw, state: "pending", approval: grant });
+}
+
+function existingNodeCommand(raw: Record<string, unknown> & { id: string }): NodeCommandRecord {
+  return {
+    id: raw.id,
+    commandId: textValue(raw, "commandId"),
+    userId: textValue(raw, "userId"),
+    nodeId: textValue(raw, "nodeId"),
+    state: textValue(raw, "state") as NodeCommandRecord["state"],
+    summary: textValue(raw, "summary"),
+    capability: textValue(raw, "capability"),
+    envelope: record(raw.envelope),
+    approval: isRecordValue(raw.approval) ? raw.approval : undefined,
+    result: raw.result,
+    expiresAt: asDateValue(raw.expiresAt),
+    createdAt: asDateValue(raw.createdAt),
+    updatedAt: asDateValue(raw.updatedAt),
+  };
+}
+
+const isRecordValue = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+/** Atomically claims pending commands for delivery and returns them. */
+export async function takePendingNodeCommands(nodeId: string): Promise<Array<Record<string, unknown>>> {
+  const database = await getDb();
+  if (!database) return [];
+  const { nodeCommands } = await database.query({
+    nodeCommands: { $: { where: { nodeId, state: "pending" } } },
+  });
+  const deliverable = (nodeCommands as unknown as Array<Record<string, unknown> & { id: string }>)
+    .filter((row) => asDateValue(row.expiresAt).getTime() > Date.now())
+    .slice(0, 16);
+  for (const row of deliverable) {
+    await database.transact(
+      database.tx.nodeCommands[row.id].update({ state: "delivered", updatedAt: new Date() }),
+    );
+  }
+  return deliverable.map((row) => ({
+    commandId: textValue(row, "commandId"),
+    envelope: record(row.envelope),
+    approval: isRecordValue(row.approval) ? row.approval : undefined,
+  }));
+}
+
+export async function completeNodeCommand(commandId: string, report: { ok: boolean; result?: unknown; code?: string; message?: string }): Promise<void> {
+  const database = await getDb();
+  if (!database) return;
+  await database.transact(
+    database.tx.nodeCommands.lookup("commandId", commandId).update({
+      state: "completed",
+      result: { ok: report.ok, result: report.result ?? null, code: report.code ?? null, message: report.message ?? null },
+      updatedAt: new Date(),
+    }),
+  );
+}
+
+export async function listRecentNodeCommands(userId: string, limit = 30): Promise<NodeCommandRecord[]> {
+  const database = await getDb();
+  if (!database) return [];
+  const { nodeCommands } = await database.query({
+    nodeCommands: { $: { where: { userId } } },
+  });
+  return (nodeCommands as unknown as Array<Record<string, unknown> & { id: string }>)
+    .map(existingNodeCommand)
+    .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
+    .slice(0, Math.max(1, Math.min(limit, 100)));
 }
