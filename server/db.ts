@@ -854,14 +854,25 @@ export async function createPairingToken(userId: string): Promise<{ token: strin
   if (!database) return undefined;
   const token = generatePairingToken();
   const expiresAt = new Date(Date.now() + PAIRING_TOKEN_TTL_MS);
-  await database.transact(
-    database.tx.pairingTokens[id()].update({
-      tokenHash: hashToken(token),
-      userId,
-      expiresAt,
-      createdAt: new Date(),
-    }),
-  );
+  try {
+    await database.transact(
+      database.tx.pairingTokens[id()].update({
+        tokenHash: hashToken(token),
+        userId,
+        expiresAt,
+        createdAt: new Date(),
+      }),
+    );
+  } catch (error) {
+    // Unknown-entity failures mean the deployed InstantDB app has not had the
+    // computers schema pushed yet; surface an actionable message, not a bare 500.
+    if (/invalid|unknown|entity|attribute|not found/i.test(String((error as Error)?.message ?? error))) {
+      throw new Error(
+        "The computers backend is not initialized yet. Run `pnpm db:push` once from the repo (needs INSTANT_APP_ADMIN_TOKEN), then retry.",
+      );
+    }
+    throw error;
+  }
   return { token, expiresAt };
 }
 

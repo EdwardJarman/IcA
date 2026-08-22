@@ -42,6 +42,13 @@ export function ComputersCard() {
 
   const pendingApprovals = (commands.data ?? []).filter((command) => command.state === "awaiting_approval");
 
+  // Queries failing usually means the computers schema was never pushed to
+  // the InstantDB backend; show it instead of pretending nothing is wrong.
+  const backendError =
+    nodes.isError || commands.isError
+      ? "Your computers couldn't load — the computers backend may not be initialized yet (run `pnpm db:push` from the repo once)."
+      : null;
+
   const startPairing = () => {
     setError(null);
     setPairingCode(null);
@@ -88,10 +95,10 @@ export function ComputersCard() {
         }
       />
 
-      {error ? (
+      {error || backendError ? (
         <Card style={{ gap: 6, flexDirection: "row", alignItems: "center" }}>
           <MaterialIcons name="shield" size={18} color={colors.coral} />
-          <Text style={{ color: colors.text, fontSize: 12.5, flex: 1 }}>{error}</Text>
+          <Text style={{ color: colors.text, fontSize: 12.5, flex: 1 }}>{error ?? backendError}</Text>
           <Pressable accessibilityRole="button" onPress={() => setError(null)}>
             <Text style={{ color: colors.textFaint, fontSize: 12 }}>Dismiss</Text>
           </Pressable>
@@ -171,7 +178,7 @@ export function ComputersCard() {
         </Card>
       ) : null}
 
-      {(nodes.data ?? []).length === 0 && !pairingCode ? (
+      {(nodes.data ?? []).length === 0 && !pairingCode && !backendError ? (
         <Card style={{ gap: 6, alignItems: "center", paddingVertical: 22 }}>
           <MaterialIcons name="devices" size={22} color={colors.textFaint} />
           <Text style={{ color: colors.text, fontWeight: "600", fontSize: 13.5 }}>No computers yet</Text>
