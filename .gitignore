@@ -6,6 +6,7 @@ node_modules/
 # Expo
 .expo/
 dist/
+dist-server/
 web-build/
 expo-env.d.ts
 
@@ -66,3 +67,7 @@ Thumbs.db
 .project-config.json
 .vercel
 .env*
+!.env.example
+
+# Local tool workspaces (never committed)
+.kilo/

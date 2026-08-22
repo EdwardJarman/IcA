@@ -1,20 +1,25 @@
 import { spawnSync } from "node:child_process";
 
-const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY || process.env.CLERK_PUBLISHABLE_KEY;
+// Clerk publishable keys are designed to be embedded in client bundles. Keep a
+// checked-in fallback so a Vercel redeploy cannot lose Rook's public auth
+// configuration when only server secrets are edited in Project Settings.
+const ROOK_CLERK_PUBLISHABLE_KEY =
+  "pk_test_aW5zcGlyZWQtaG9uZXliZWUtNDMuY2xlcmsuYWNjb3VudHMuZGV2JA";
+const publishableKey =
+  process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ||
+  process.env.CLERK_PUBLISHABLE_KEY ||
+  ROOK_CLERK_PUBLISHABLE_KEY;
 
-if (!publishableKey) {
-  console.error(
-    "Missing Clerk public configuration. In Vercel Project Settings → Environment Variables, add CLERK_PUBLISHABLE_KEY (or EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY) for the target environment, then redeploy.",
-  );
-  process.exit(1);
-}
-
-const result = spawnSync("pnpm", ["export:web"], {
+const result = spawnSync(
+  "pnpm",
+  ["exec", "expo", "export", "--platform", "web", "--output-dir", "dist", "--clear"],
+  {
   stdio: "inherit",
   env: {
     ...process.env,
     EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY: publishableKey,
   },
-});
+  },
+);
 
 process.exit(result.status ?? 1);
