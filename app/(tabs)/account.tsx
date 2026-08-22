@@ -7,6 +7,7 @@ import { Alert, Platform, Pressable, ScrollView, Text, View } from "react-native
 import { AiBackendCard } from "@/components/ai-backend-card";
 import { AiProviderSwitch } from "@/components/ai-provider-switch";
 import { ChatGPTConnectionCard } from "@/components/chatgpt-connection-card";
+import { ComputersCard } from "@/components/computers-card";
 import { ExcelConnectionCard } from "@/components/excel-connection-card";
 import { Avatar, Card, ScreenHeader, SectionHeader, StatusPill, Switch } from "@/components/rook-primitives";
 import { ScreenContainer } from "@/components/screen-container";
@@ -43,6 +44,7 @@ export default function AccountScreen() {
           <SectionHeader title="Connected apps" caption="Give your Bots useful access without giving up control." />
           <ExcelConnectionCard />
         </View>
+        <ComputersCard />
         <ProfileAndStorage syncStatus={syncStatus} />
       </ScrollView>
     </ScreenContainer>

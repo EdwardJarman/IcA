@@ -21,6 +21,7 @@ import type {
   PushDevice,
   RookNodeRecord,
   User,
+  WorkroomSnapshotRecord,
 } from "../shared/database";
 import type { WorkroomCloudSnapshot } from "../shared/workroom-snapshot";
 import { ENV } from "./_core/env";
@@ -82,6 +83,53 @@ const asDate = (value: Date | string | number): Date =>
 /** asDate for loosely-typed InstantDB rows. */
 const asDateValue = (value: unknown): Date =>
   value instanceof Date ? value : typeof value === "string" || typeof value === "number" ? new Date(value) : new Date(0);
+
+/* ---- Explicit row contracts ----
+ * InstantDB's inferred query row types can collapse to bare `{ id }` under
+ * different TypeScript/bundler environments (observed on Vercel builds), so
+ * every query result below is cast through these types instead of relying on
+ * inference. This keeps the deployed build deterministic. */
+type WithId = { id: string };
+type UserRow = User & WithId;
+type PushDeviceRow = PushDevice & WithId;
+type NotificationPreferencesRow = {
+  id: string;
+  userId: string;
+  approvalEnabled: boolean;
+  completionEnabled: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+type WorkroomSnapshotRow = WorkroomSnapshotRecord;
+type WorkroomItemRow = { id: string; createdAt: Date; updatedAt: Date } & Record<string, unknown>;
+type MicrosoftOAuthStateRow = {
+  id: string;
+  state: string;
+  userId: string;
+  codeVerifier: string;
+  returnTo: string;
+  expiresAt: Date;
+  createdAt: Date;
+};
+type MicrosoftConnectionRow = MicrosoftConnection & WithId;
+type ExcelActionClaimRow = { id: string; actionId: string; userId: string; createdAt: Date };
+type ExcelPendingActionRow = ExcelPendingAction & {
+  actionId: string;
+  botClientId: string;
+  taskClientId: string;
+  toolName: string;
+  arguments: Record<string, unknown>;
+  summary: string;
+  state: string;
+};
+type PairingTokenRow = {
+  id: string;
+  tokenHash: string;
+  userId: string;
+  usedByNodeId?: string;
+  expiresAt: Date;
+  createdAt: Date;
+};
 const withTimestamps = <T extends { createdAt: Date; updatedAt: Date }>(
   entity: T,
 ): T => ({
@@ -90,17 +138,7 @@ const withTimestamps = <T extends { createdAt: Date; updatedAt: Date }>(
   updatedAt: asDate(entity.updatedAt),
 });
 
-function asUser(entity: {
-  id: string;
-  openId: string;
-  name?: string;
-  email?: string;
-  loginMethod?: string;
-  role: string;
-  createdAt: Date;
-  updatedAt: Date;
-  lastSignedIn: Date;
-}): User {
+function asUser(entity: UserRow): User {
   return {
     id: entity.id,
     openId: entity.openId,
@@ -153,9 +191,9 @@ export async function upsertUser(user: InsertUser): Promise<void> {
 export async function getUserByOpenId(openId: string): Promise<User | undefined> {
   const database = await getDb();
   if (!database) return undefined;
-  const { users } = await database.query({
+  const { users } = (await database.query({
     users: { $: { where: { openId }, limit: 1 } },
-  });
+  })) as { users: UserRow[] };
   return users[0] ? asUser(users[0]) : undefined;
 }
 
@@ -185,29 +223,29 @@ export async function upsertPushDevice(
 export async function getPushDevice(installationId: string) {
   const database = await getDb();
   if (!database) return undefined;
-  const { pushDevices } = await database.query({
+  const { pushDevices } = (await database.query({
     pushDevices: { $: { where: { installationId }, limit: 1 } },
-  });
+  })) as { pushDevices: PushDeviceRow[] };
   return pushDevices[0] ? withTimestamps(pushDevices[0]) : undefined;
 }
 
 export async function getPushDevicesForUser(userId: string): Promise<PushDevice[]> {
   const database = await getDb();
   if (!database) return [];
-  const { pushDevices } = await database.query({
+  const { pushDevices } = (await database.query({
     pushDevices: { $: { where: { userId } } },
-  });
+  })) as { pushDevices: PushDeviceRow[] };
   return pushDevices.map(withTimestamps);
 }
 
 export async function getNotificationPreferences(userId: string) {
   const database = await getDb();
   if (!database) return undefined;
-  const { userNotificationPreferences } = await database.query({
+  const { userNotificationPreferences } = (await database.query({
     userNotificationPreferences: {
       $: { where: { userId }, limit: 1 },
     },
-  });
+  })) as { userNotificationPreferences: NotificationPreferencesRow[] };
   return userNotificationPreferences[0]
     ? withTimestamps(userNotificationPreferences[0])
     : undefined;
@@ -234,9 +272,9 @@ export async function upsertNotificationPreferences(
 export async function getWorkroomSnapshot(userId: string) {
   const database = await getDb();
   if (!database) return undefined;
-  const { workroomSnapshots } = await database.query({
+  const { workroomSnapshots } = (await database.query({
     workroomSnapshots: { $: { where: { userId }, limit: 1 } },
-  });
+  })) as { workroomSnapshots: WorkroomSnapshotRow[] };
   return workroomSnapshots[0]
     ? withTimestamps(workroomSnapshots[0])
     : undefined;
@@ -350,11 +388,15 @@ export async function saveWorkroomState(
 
   const previousVersion = existingSnapshot?.syncVersion;
   if (previousVersion && previousVersion !== syncVersion) {
-    const stale = await database.query({
+    const stale = (await database.query({
       workroomBots: { $: { where: { userId, syncVersion: previousVersion } } },
       workroomTasks: { $: { where: { userId, syncVersion: previousVersion } } },
       workroomFiles: { $: { where: { userId, syncVersion: previousVersion } } },
-    });
+    })) as {
+      workroomBots: WorkroomItemRow[];
+      workroomTasks: WorkroomItemRow[];
+      workroomFiles: WorkroomItemRow[];
+    };
     const staleTransactions: InstantTx[] = [
       ...stale.workroomBots.map((item) =>
         database.tx.workroomBots[item.id].delete(),
@@ -384,11 +426,15 @@ export async function listNormalizedWorkroomRecords(userId: string) {
   const snapshot = await getWorkroomSnapshot(userId);
   if (!snapshot?.syncVersion) return { bots: [], tasks: [], files: [] };
   const syncVersion = snapshot.syncVersion;
-  const { workroomBots, workroomTasks, workroomFiles } = await database.query({
+  const { workroomBots, workroomTasks, workroomFiles } = (await database.query({
     workroomBots: { $: { where: { userId, syncVersion } } },
     workroomTasks: { $: { where: { userId, syncVersion } } },
     workroomFiles: { $: { where: { userId, syncVersion } } },
-  });
+  })) as {
+    workroomBots: WorkroomItemRow[];
+    workroomTasks: WorkroomItemRow[];
+    workroomFiles: WorkroomItemRow[];
+  };
   return {
     bots: workroomBots.map(withTimestamps),
     tasks: workroomTasks.map(withTimestamps),
@@ -417,9 +463,9 @@ export async function createMicrosoftOAuthState(input: {
 
 export async function consumeMicrosoftOAuthState(state: string) {
   const database = await requireDb();
-  const { microsoftOAuthStates } = await database.query({
+  const { microsoftOAuthStates } = (await database.query({
     microsoftOAuthStates: { $: { where: { state }, limit: 1 } },
-  });
+  })) as { microsoftOAuthStates: MicrosoftOAuthStateRow[] };
   const oauthState = microsoftOAuthStates[0];
   if (!oauthState) return undefined;
   await database.transact(
@@ -434,20 +480,7 @@ export async function consumeMicrosoftOAuthState(state: string) {
   return normalized;
 }
 
-function asMicrosoftConnection(entity: {
-  id: string;
-  userId: string;
-  microsoftUserId: string;
-  displayName?: string;
-  email?: string;
-  encryptedAccessToken: string;
-  encryptedRefreshToken: string;
-  expiresAt: Date;
-  scopes: string;
-  status: string;
-  createdAt: Date;
-  updatedAt: Date;
-}): MicrosoftConnection {
+function asMicrosoftConnection(entity: MicrosoftConnectionRow): MicrosoftConnection {
   return {
     ...entity,
     displayName: nullable(entity.displayName),
@@ -464,9 +497,9 @@ export async function getMicrosoftConnection(
 ): Promise<MicrosoftConnection | undefined> {
   const database = await getDb();
   if (!database) return undefined;
-  const { microsoftConnections } = await database.query({
+  const { microsoftConnections } = (await database.query({
     microsoftConnections: { $: { where: { userId }, limit: 1 } },
-  });
+  })) as { microsoftConnections: MicrosoftConnectionRow[] };
   return microsoftConnections[0]
     ? asMicrosoftConnection(microsoftConnections[0])
     : undefined;
@@ -585,12 +618,17 @@ function deletionTransactions(
 export async function deleteMicrosoftConnection(userId: string) {
   const database = await getDb();
   if (!database) return false;
-  const result = await database.query({
+  const result = (await database.query({
     microsoftConnections: { $: { where: { userId } } },
     microsoftOAuthStates: { $: { where: { userId } } },
     excelPendingActions: { $: { where: { userId } } },
     excelActionClaims: { $: { where: { userId } } },
-  });
+  })) as {
+    microsoftConnections: WithId[];
+    microsoftOAuthStates: WithId[];
+    excelPendingActions: WithId[];
+    excelActionClaims: WithId[];
+  };
   const transactions = deletionTransactions(database, result);
   if (transactions.length) await database.transact(transactions);
   return true;
@@ -655,11 +693,11 @@ function asExcelPendingAction(entity: {
 export async function getExcelPendingAction(userId: string, actionId: string) {
   const database = await getDb();
   if (!database) return undefined;
-  const { excelPendingActions } = await database.query({
+  const { excelPendingActions } = (await database.query({
     excelPendingActions: {
       $: { where: { actionId }, limit: 1 },
     },
-  });
+  })) as { excelPendingActions: ExcelPendingActionRow[] };
   const action = excelPendingActions[0];
   if (!action || action.userId !== userId) return undefined;
   return asExcelPendingAction(action);
@@ -668,9 +706,9 @@ export async function getExcelPendingAction(userId: string, actionId: string) {
 export async function listPendingExcelActions(userId: string) {
   const database = await getDb();
   if (!database) return [];
-  const { excelPendingActions } = await database.query({
+  const { excelPendingActions } = (await database.query({
     excelPendingActions: { $: { where: { userId, state: "pending" } } },
-  });
+  })) as { excelPendingActions: ExcelPendingActionRow[] };
   return excelPendingActions.map(asExcelPendingAction);
 }
 
@@ -681,9 +719,9 @@ export async function claimExcelPendingAction(
   const database = await requireDb();
   const action = await getExcelPendingAction(userId, actionId);
   if (!action || action.state !== "pending") return undefined;
-  const { excelPendingActions } = await database.query({
+  const { excelPendingActions } = (await database.query({
     excelPendingActions: { $: { where: { actionId }, limit: 1 } },
-  });
+  })) as { excelPendingActions: ExcelPendingActionRow[] };
   const stored = excelPendingActions[0];
   if (!stored || stored.userId !== userId || stored.state !== "pending")
     return undefined;
@@ -714,9 +752,9 @@ export async function finishExcelPendingAction(
   },
 ) {
   const database = await requireDb();
-  const { excelPendingActions } = await database.query({
+  const { excelPendingActions } = (await database.query({
     excelPendingActions: { $: { where: { actionId }, limit: 1 } },
-  });
+  })) as { excelPendingActions: ExcelPendingActionRow[] };
   const action = excelPendingActions[0];
   if (!action || action.userId !== userId || action.state !== "executing")
     return false;
@@ -780,7 +818,7 @@ export async function exportAccountWorkroomData(userId: string) {
 export async function deleteAccountWorkroomData(userId: string) {
   const database = await getDb();
   if (!database) return false;
-  const result = await database.query({
+  const result = (await database.query({
     workroomSnapshots: { $: { where: { userId } } },
     workroomBots: { $: { where: { userId } } },
     workroomTasks: { $: { where: { userId } } },
@@ -791,7 +829,7 @@ export async function deleteAccountWorkroomData(userId: string) {
     microsoftOAuthStates: { $: { where: { userId } } },
     excelPendingActions: { $: { where: { userId } } },
     excelActionClaims: { $: { where: { userId } } },
-  });
+  })) as Record<string, WithId[]>;
   const transactions = deletionTransactions(database, result);
   await transactInBatches(database, transactions);
   return true;
@@ -831,9 +869,9 @@ export async function createPairingToken(userId: string): Promise<{ token: strin
 export async function consumePairingToken(token: string): Promise<string | undefined> {
   const database = await getDb();
   if (!database) return undefined;
-  const { pairingTokens } = await database.query({
+  const { pairingTokens } = (await database.query({
     pairingTokens: { $: { where: { tokenHash: hashToken(token) }, limit: 1 } },
-  });
+  })) as { pairingTokens: PairingTokenRow[] };
   const record = pairingTokens[0];
   if (!record) return undefined;
   if (record.usedByNodeId) return undefined;
