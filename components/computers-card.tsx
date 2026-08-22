@@ -1,10 +1,25 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useState } from "react";
-import { Alert, Platform, Pressable, Text, View } from "react-native";
+import { Platform, Pressable, Text, View } from "react-native";
 
 import { Card, PrimaryButton, SectionHeader, StatusPill } from "@/components/rook-primitives";
 import { useRookTheme } from "@/lib/ui";
 import { trpc } from "@/lib/trpc";
+
+/** Cross-platform confirm: react-native-web does not implement Alert.alert. */
+function confirmRemoval(name: string, onConfirm: () => void): void {
+  const message = `Remove ${name}? This computer will immediately lose access to your account until it is paired again.`;
+  if (Platform.OS === "web") {
+    if (window.confirm(message)) onConfirm();
+    return;
+  }
+  import("react-native").then(({ Alert }) =>
+    Alert.alert(`Remove ${name}?`, message, [
+      { text: "Cancel", style: "cancel" },
+      { text: "Remove", style: "destructive", onPress: onConfirm },
+    ]),
+  );
+}
 
 /**
  * Your computers: the Rook Node desktop sidecars paired to this account.
@@ -23,15 +38,17 @@ export function ComputersCard() {
   const removeNode = trpc.nodes.remove.useMutation();
   const decideCommand = trpc.nodes.decideCommand.useMutation();
   const [pairingCode, setPairingCode] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const pendingApprovals = (commands.data ?? []).filter((command) => command.state === "awaiting_approval");
 
   const startPairing = () => {
+    setError(null);
     setPairingCode(null);
     void createPairing.mutateAsync().then((result) => {
       setPairingCode(result.token);
     }).catch(() => {
-      Alert.alert("Pairing unavailable", "Rook could not mint a pairing code right now. Please try again.");
+      setError("Rook could not mint a pairing code right now. If this keeps happening, the computers backend may still be initializing — try again in a minute.");
     });
   };
 
@@ -47,20 +64,12 @@ export function ComputersCard() {
   };
 
   const confirmRemove = (nodeId: string, name: string) =>
-    Alert.alert(
-      `Remove ${name}?`,
-      "This computer will immediately lose access to your account until it is paired again.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Remove",
-          style: "destructive",
-          onPress: () => {
-            void removeNode.mutateAsync({ nodeId }).then(() => nodes.refetch()).catch(() => undefined);
-          },
-        },
-      ],
-    );
+    confirmRemoval(name, () => {
+      setError(null);
+      void removeNode.mutateAsync({ nodeId }).then(() => nodes.refetch()).catch(() => {
+        setError("Rook could not remove that computer right now. Please try again.");
+      });
+    });
 
   const decide = (commandId: string, decision: "approved" | "declined") => {
     void decideCommand
@@ -78,6 +87,16 @@ export function ComputersCard() {
           <PrimaryButton label="Pair a computer" icon="computer" onPress={startPairing} disabled={createPairing.isPending} />
         }
       />
+
+      {error ? (
+        <Card style={{ gap: 6, flexDirection: "row", alignItems: "center" }}>
+          <MaterialIcons name="shield" size={18} color={colors.coral} />
+          <Text style={{ color: colors.text, fontSize: 12.5, flex: 1 }}>{error}</Text>
+          <Pressable accessibilityRole="button" onPress={() => setError(null)}>
+            <Text style={{ color: colors.textFaint, fontSize: 12 }}>Dismiss</Text>
+          </Pressable>
+        </Card>
+      ) : null}
 
       {pendingApprovals.length > 0 ? (
         <View style={{ gap: 8 }}>
